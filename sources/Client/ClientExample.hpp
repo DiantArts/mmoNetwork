@@ -21,15 +21,12 @@ class ClientExample
 public:
     void pingServer()
     {
-        ::network::Message<::MessageType> message{ ::MessageType::Ping };
-        message << ::std::chrono::system_clock::now();
-        this->send(::std::move(message));
+        this->send(::MessageType::Ping, ::std::chrono::system_clock::now());
     }
 
     void messageServer()
     {
-        ::network::Message<::MessageType> message{ ::MessageType::MessageAll };
-        this->send(::std::move(message));
+        this->send(::MessageType::MessageAll);
     }
 
     void handleMessagesIn()
@@ -41,9 +38,7 @@ public:
                 ::std::cout << "[CLIENT] Authentification accepted" << ::std::endl;
                 break;
             } case ::MessageType::Message: {
-                ::network::Id clientId;
-                message >> clientId;
-                ::std::cout << "message from [" << clientId << "]" << ::std::endl;
+                ::std::cout << "message from [" << message.extract<::network::Id>() << "]" << ::std::endl;
                 break;
             } case ::MessageType::Ping: {
                 auto timeNow{ ::std::chrono::system_clock::now() };

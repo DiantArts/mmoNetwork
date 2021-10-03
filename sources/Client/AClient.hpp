@@ -11,7 +11,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageEnumType
+    ::network::detail::IsEnum MessageType
 > class AClient {
 
 public:
@@ -35,8 +35,8 @@ public:
     ) -> bool
     {
         try {
-            m_connection = ::std::make_unique<::network::Connection<MessageEnumType>>(
-                ::network::Connection<MessageEnumType>::owner::client,
+            m_connection = ::std::make_unique<::network::Connection<MessageType>>(
+                ::network::Connection<MessageType>::owner::client,
                 m_asioContext,
                 ::boost::asio::ip::tcp::socket(m_asioContext),
                 m_messagesIn
@@ -82,17 +82,29 @@ public:
     // ------------------------------------------------------------------ send
 
     void send(
-        ::network::Message<MessageEnumType>& message
+        ::network::Message<MessageType>& message
     )
     {
         m_connection->send(message);
     }
 
     void send(
-        ::network::Message<MessageEnumType>&& message
+        ::network::Message<MessageType>&& message
     )
     {
         m_connection->send(::std::forward<decltype(message)>(message)); // TODO: replace that
+    }
+
+    // construct and send
+    void send(
+        ::network::detail::IsEnum auto&& messageType,
+        auto&&... args
+    )
+    {
+        m_connection->send(
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        );
     }
 
 
@@ -100,7 +112,7 @@ public:
     // ------------------------------------------------------------------ queue
 
     auto getIncommingMessages()
-        -> ::network::Queue<::network::OwnedMessage<MessageEnumType>>&
+        -> ::network::Queue<::network::OwnedMessage<MessageType>>&
     {
         return m_messagesIn;
     }
@@ -114,9 +126,9 @@ private:
     ::std::thread m_threadContext;
 
     // hardware connection to the server
-    ::std::unique_ptr<::network::Connection<MessageEnumType>> m_connection;
+    ::std::unique_ptr<::network::Connection<MessageType>> m_connection;
 
-    ::network::Queue<::network::OwnedMessage<MessageEnumType>> m_messagesIn;
+    ::network::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
 
 };
 

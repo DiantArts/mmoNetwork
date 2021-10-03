@@ -11,9 +11,9 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageEnumType
+    ::network::detail::IsEnum MessageType
 > class Connection
-    : public ::std::enable_shared_from_this<Connection<MessageEnumType>>
+    : public ::std::enable_shared_from_this<Connection<MessageType>>
 {
 
 public:
@@ -30,10 +30,10 @@ public:
     // ------------------------------------------------------------------ *structors
 
     Connection(
-        Connection<MessageEnumType>::owner ownerType,
+        Connection<MessageType>::owner ownerType,
         ::boost::asio::io_context& asioContext,
         ::boost::asio::ip::tcp::socket socket,
-        ::network::Queue<::network::OwnedMessage<MessageEnumType>>& messagesIn
+        ::network::Queue<::network::OwnedMessage<MessageType>>& messagesIn
     )
         : m_asioContext{ asioContext }
         , m_socket{ ::std::move(socket) }
@@ -53,7 +53,7 @@ public:
     )
         -> bool
     {
-        if (m_ownerType == Connection<MessageEnumType>::owner::server) {
+        if (m_ownerType == Connection<MessageType>::owner::server) {
             if (m_socket.is_open()) {
                 m_id = id;
                 this->readHeader();
@@ -74,7 +74,7 @@ public:
     )
         -> bool
     {
-        if (m_ownerType == Connection<MessageEnumType>::owner::client) {
+        if (m_ownerType == Connection<MessageType>::owner::client) {
             // resolve host/ip addr into a physical addr
             ::boost::asio::ip::tcp::resolver resolver{ m_asioContext };
             auto endpoints = resolver.resolve(host, ::std::to_string(port));
@@ -168,12 +168,12 @@ public:
 
     void transferBufferToInQueue()
     {
-        if (m_ownerType == Connection<MessageEnumType>::owner::server) {
+        if (m_ownerType == Connection<MessageType>::owner::server) {
             m_messagesIn.push_back(
-                network::OwnedMessage<MessageEnumType>{ this->shared_from_this(), m_bufferIn }
+                network::OwnedMessage<MessageType>{ this->shared_from_this(), m_bufferIn }
             );
         } else {
-            m_messagesIn.push_back(network::OwnedMessage<MessageEnumType>{ nullptr, m_bufferIn });
+            m_messagesIn.push_back(network::OwnedMessage<MessageType>{ nullptr, m_bufferIn });
         }
         this->readHeader();
     }
@@ -183,7 +183,29 @@ public:
     // ------------------------------------------------------------------ out - async
 
     void send(
-        ::network::Message<MessageEnumType> message
+        ::network::detail::IsEnum auto&& messageType,
+        auto&&... args
+    )
+    {
+        ::network::Message message{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        };
+        ::boost::asio::post(
+            m_asioContext,
+            [this, message]()
+            {
+                auto wasOutQueueEmpty{ m_messagesOut.empty() };
+                m_messagesOut.push_back(::std::move(message));
+                if (wasOutQueueEmpty) {
+                    this->writeHeader();
+                }
+            }
+        );
+    }
+
+    void send(
+        ::network::Message<MessageType> message
     )
     {
         ::boost::asio::post(
@@ -273,14 +295,14 @@ private:
     ::boost::asio::ip::tcp::socket m_socket;
 
     // in
-    ::network::Queue<::network::OwnedMessage<MessageEnumType>>& m_messagesIn;
-    ::network::Message<MessageEnumType> m_bufferIn;
+    ::network::Queue<::network::OwnedMessage<MessageType>>& m_messagesIn;
+    ::network::Message<MessageType> m_bufferIn;
 
     // out
-    ::network::Queue<::network::Message<MessageEnumType>> m_messagesOut;
+    ::network::Queue<::network::Message<MessageType>> m_messagesOut;
 
     // modifies the behavior of the connection
-    Connection<MessageEnumType>::owner m_ownerType;
+    Connection<MessageType>::owner m_ownerType;
 
     ::network::Id m_id{ 1 };
 

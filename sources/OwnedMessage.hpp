@@ -3,7 +3,7 @@
 #include <Message.hpp>
 
 // forward decleration
-namespace network { template <::network::detail::IsEnum MessageEnumType> class Connection; }
+namespace network { template <::network::detail::IsEnum MessageType> class Connection; }
 
 
 
@@ -12,9 +12,9 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageEnumType
+    ::network::detail::IsEnum MessageType
 > class OwnedMessage
-    : public ::network::Message<MessageEnumType>
+    : public ::network::Message<MessageType>
 {
 
 public:
@@ -22,10 +22,10 @@ public:
     // ------------------------------------------------------------------ *structors
 
     inline OwnedMessage(
-        ::std::shared_ptr<::network::Connection<MessageEnumType>> remote,
-        ::network::Message<MessageEnumType> message
+        ::std::shared_ptr<::network::Connection<MessageType>> remote,
+        ::network::Message<MessageType> message
     )
-        : ::network::Message<MessageEnumType>{ ::std::move(message) }
+        : ::network::Message<MessageType>{ ::std::move(message) }
         , m_remote{ remote }
     {}
 
@@ -36,7 +36,7 @@ public:
     // ------------------------------------------------------------------ informations
 
     auto getRemote() const
-        -> ::std::shared_ptr<::network::Connection<MessageEnumType>>
+        -> ::std::shared_ptr<::network::Connection<MessageType>>
     {
         return m_remote;
     }
@@ -45,7 +45,7 @@ public:
 
 private:
 
-    ::std::shared_ptr<::network::Connection<MessageEnumType>> m_remote{ nullptr };
+    ::std::shared_ptr<::network::Connection<MessageType>> m_remote{ nullptr };
 
 };
 

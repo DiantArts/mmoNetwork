@@ -9,14 +9,14 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageEnumType
+    ::network::detail::IsEnum MessageType
 > class Message {
 
 public:
 
     struct Header {
 
-        MessageEnumType packetType{};
+        MessageType packetType{};
         ::std::uint16_t bodySize{ 0 };
 
     };
@@ -30,21 +30,24 @@ public:
     inline Message() = default;
 
     inline Message(
-        MessageEnumType messageType
+        MessageType&& messageType,
+        auto&&... args
     )
-        : m_header{ .packetType = messageType }
-    {}
+        : m_header{ .packetType = ::std::forward<decltype(messageType)>(messageType) }
+    {
+        this->insert(::std::forward<decltype(args)>(args)...);
+    }
 
     inline ~Message() = default;
 
 
 
-    // ------------------------------------------------------------------ extract/insert
-
+    // ------------------------------------------------------------------ insert
     // Insert any POD-like data into the body
-    inline auto insert(
+
+    inline void insert(
         ::network::detail::IsStandardLayout auto&& data
-    ) -> Message<MessageEnumType>&
+    )
     {
         // change size and alloc if needed
         m_header.bodySize += sizeof(data);
@@ -52,31 +55,41 @@ public:
 
         // insert data into the end of the vector
         ::std::memmove(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
+    }
 
-        return *this;
+    // Multiple insertions
+    inline void insert(
+        ::network::detail::IsStandardLayout auto&&... data
+    )
+    {
+        (this->insert(::std::forward<decltype(data)>(data)), ...);
     }
 
     inline auto operator<<(
         ::network::detail::IsStandardLayout auto&& data
-    ) -> Message<MessageEnumType>&
+    ) -> Message<MessageType>&
     {
-        return this->insert(::std::forward<decltype(data)>(data));
+        this->insert(::std::forward<decltype(data)>(data));
+        return *this;
     }
 
     inline auto operator<<(
         const ::network::detail::IsStandardLayout auto& data
-    ) -> Message<MessageEnumType>&
+    ) -> Message<MessageType>&
     {
         decltype(data) copiedData{ data };
-        return this->insert(::std::move(copiedData));
+        this->insert(::std::move(copiedData));
+        return *this;
     }
 
 
 
-    // Extract any POD-like data into the body
+    // ------------------------------------------------------------------ extract
+    // Extract any POD-like data from the end of the body
+
     inline auto extract(
         ::network::detail::IsStandardLayout auto& data
-    ) -> Message<MessageEnumType>&
+    ) -> Message<MessageType>&
     {
         m_header.bodySize -= sizeof(data);
 
@@ -89,9 +102,27 @@ public:
         return *this;
     }
 
+    template <
+        ::network::detail::IsStandardLayout DataType
+    > inline auto extract()
+        -> DataType
+    {
+        DataType data;
+
+        m_header.bodySize -= sizeof(data);
+
+        // extract data out of the end of the vector
+        ::std::memmove(&data, m_body.data() + m_header.bodySize, sizeof(data));
+
+        // resize so he doesn't actually yeet my data
+        m_body.resize(m_header.bodySize);
+
+        return data;
+    }
+
     inline auto operator>>(
         ::network::detail::IsStandardLayout auto& data
-    ) -> Message<MessageEnumType>&
+    ) -> Message<MessageType>&
     {
         return this->extract(data);
     }
@@ -103,7 +134,7 @@ public:
     [[ nodiscard ]] constexpr static inline auto getHeaderSize()
         -> ::std::size_t
     {
-        return sizeof(Message<MessageEnumType>::Header);
+        return sizeof(Message<MessageType>::Header);
     }
 
     [[ nodiscard ]] inline auto getBodySize() const
@@ -135,13 +166,13 @@ public:
     }
 
     auto getType() const
-        -> MessageEnumType
+        -> MessageType
     {
         return m_header.packetType;
     }
 
     void setType(
-        MessageEnumType type
+        MessageType type
     )
     {
         m_header.packetType = type;
@@ -195,7 +226,7 @@ public:
 
 private:
 
-    Message<MessageEnumType>::Header m_header;
+    Message<MessageType>::Header m_header;
     ::std::vector<::std::byte> m_body;
 
 };

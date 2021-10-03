@@ -11,12 +11,12 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageEnumType
+    ::network::detail::IsEnum MessageType
 > class AServer {
 
 public:
 
-    using ClientConnectionPtr = ::std::shared_ptr<::network::Connection<MessageEnumType>>;
+    using ClientConnectionPtr = ::std::shared_ptr<::network::Connection<MessageType>>;
 
 
 public:
@@ -91,8 +91,8 @@ public:
             ) {
                 if (!errorCode) {
                     ::std::cout << "[SERVER] New incomming connection: " << socket.remote_endpoint() << ".\n";
-                    auto newConnection{ ::std::make_shared<::network::Connection<MessageEnumType>>(
-                        ::network::Connection<MessageEnumType>::owner::server,
+                    auto newConnection{ ::std::make_shared<::network::Connection<MessageType>>(
+                        ::network::Connection<MessageType>::owner::server,
                         m_asioContext,
                         ::std::move(socket),
                         m_messagesIn
@@ -136,8 +136,8 @@ public:
     // ------------------------------------------------------------------ out - async
 
     void send(
-        const ::network::Message<MessageEnumType>& message,
-        AServer<MessageEnumType>::ClientConnectionPtr client
+        const ::network::Message<MessageType>& message,
+        AServer<MessageType>::ClientConnectionPtr client
     )
     {
         if (client->isConnected()) {
@@ -151,8 +151,8 @@ public:
     }
 
     void send(
-        const ::network::Message<MessageEnumType>& message,
-        ::std::same_as<AServer<MessageEnumType>::ClientConnectionPtr> auto... clients
+        const ::network::Message<MessageType>& message,
+        ::std::same_as<AServer<MessageType>::ClientConnectionPtr> auto... clients
     )
     {
         auto invalidClientDetected{ false };
@@ -174,8 +174,8 @@ public:
     }
 
     void sendToAllClient(
-        const ::network::Message<MessageEnumType>& message,
-        ::std::same_as<AServer<MessageEnumType>::ClientConnectionPtr> auto... ignoredClients
+        const ::network::Message<MessageType>& message,
+        ::std::same_as<AServer<MessageType>::ClientConnectionPtr> auto... ignoredClients
     )
     {
         auto invalidClientDetected{ false };
@@ -206,16 +206,16 @@ protected:
 
     // refuses the connection by returning false
     virtual auto onClientConnect(
-        AServer<MessageEnumType>::ClientConnectionPtr client
+        AServer<MessageType>::ClientConnectionPtr client
     ) -> bool
     {
-        ::network::Message<MessageEnumType> message{ MessageEnumType::ConnectionAccepted };
+        ::network::Message<MessageType> message{ MessageType::ConnectionAccepted };
         client->send(message);
         return true;
     }
 
     virtual void onClientDisconnect(
-        AServer<MessageEnumType>::ClientConnectionPtr client
+        AServer<MessageType>::ClientConnectionPtr client
     )
     {
         ::std::cout << "[SERVER:" << client->getId() << "] Disconnected, client removed.\n";
@@ -223,21 +223,21 @@ protected:
 
     // after receiving
     virtual void onReceive(
-        const ::network::Message<MessageEnumType>& message,
-        AServer<MessageEnumType>::ClientConnectionPtr client
+        const ::network::Message<MessageType>& message,
+        AServer<MessageType>::ClientConnectionPtr client
     )
     {}
 
     // before sending
     virtual void onSend(
-        const ::network::Message<MessageEnumType>& message,
-        AServer<MessageEnumType>::ClientConnectionPtr client
+        const ::network::Message<MessageType>& message,
+        AServer<MessageType>::ClientConnectionPtr client
     )
     {}
 
 
 
-protected:
+private:
 
     // context running on a seperate thread
     ::boost::asio::io_context m_asioContext;
@@ -246,9 +246,9 @@ protected:
     // hardware connection to the server
     ::boost::asio::ip::tcp::acceptor m_asioAcceptor;
 
-    ::network::Queue<::network::OwnedMessage<MessageEnumType>> m_messagesIn;
+    ::network::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
 
-    ::std::deque<AServer<MessageEnumType>::ClientConnectionPtr> m_connections;
+    ::std::deque<AServer<MessageType>::ClientConnectionPtr> m_connections;
 
     ::network::Id m_idCounter{ 1 };
 

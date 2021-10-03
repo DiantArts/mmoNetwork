@@ -7,12 +7,6 @@
 
 # DEBUG_MAKEFILE	:=	true
 
-ARGV1			:=	127.0.0.1 8080
-ARGV2			:=	8080
-NAME1			:=	client
-NAME2			:=	server
-TNAME			:=	unit
-
 BINDIR			:=	binaries
 SRCDIR			:=	sources
 INCDIR			:=	includes
@@ -26,6 +20,12 @@ OBJDIR			:=	objects
 DEPDIR			:=	dependencies
 OBJEXTERNDIR	:=	$(EXTERNDIR)/$(OBJDIR)
 DEPEXTERNDIR	:=	$(EXTERNDIR)/$(DEPDIR)
+
+ARGV1			:=	127.0.0.1 8080
+ARGV2			:=	8080
+NAME1			:=	$(BINDIR)/client
+NAME2			:=	$(BINDIR)/server
+TNAME			:=	$(BINDIR)/unit
 
 C_SRCEXT		:=	.c
 CPP_SRCEXT		:=	.cpp
