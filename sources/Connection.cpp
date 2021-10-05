@@ -328,13 +328,9 @@ template <
         ) {
             if (!errorCode) {
                 if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
-                    if (m_cipher.checkClientPublicKey()) {
-                        return this->serverHandshake();
-                    }
+                    return this->serverHandshake();
                 } else {
-                    if (m_cipher.checkClientPublicKey()) {
-                        return this->clientHandshake();
-                    }
+                    return this->clientHandshake();
                 }
                 // no return means error
                 m_owner.onIdentificationDenial(this->shared_from_this());
@@ -356,20 +352,23 @@ template <
     auto handshakeBaseValue{ static_cast<::std::uint64_t>(
         ::std::chrono::system_clock::now().time_since_epoch().count()
     ) };
-    this->serverSendHandshake(handshakeBaseValue);
-    this->serverReadHandshake(handshakeBaseValue, new ::std::uint64_t);
+    this->serverSendHandshake(m_cipher.encrypt(&handshakeBaseValue, sizeof(::std::uint64_t)));
+    this->serverReadHandshake(
+        handshakeBaseValue,
+        new ::std::array<::std::byte, ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))>
+    );
 }
 
 template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::serverSendHandshake(
-    ::std::uint64_t& handshakeValue
+    ::std::vector<::std::byte>&& encryptedHandshakeBaseValue
 )
 {
     ::boost::asio::async_write(
         m_socket,
-        ::boost::asio::buffer(&handshakeValue, sizeof(::std::uint64_t)),
-        [&](
+        ::boost::asio::buffer(encryptedHandshakeBaseValue.data(), encryptedHandshakeBaseValue.size()),
+        [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -385,12 +384,15 @@ template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::serverReadHandshake(
     ::std::uint64_t& handshakeBaseValue,
-    ::std::uint64_t* handshakeReceivedPtr
+    ::std::array<
+        ::std::byte,
+        ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+    >* handshakeReceivedPtr
 )
 {
     ::boost::asio::async_read(
         m_socket,
-        ::boost::asio::buffer(handshakeReceivedPtr, sizeof(::std::uint64_t)),
+        ::boost::asio::buffer(handshakeReceivedPtr->data(), handshakeReceivedPtr->size()),
         [
             this,
             handshakeBaseValue,
@@ -400,7 +402,13 @@ template <
             const ::std::size_t length
         ) {
             if (!errorCode) {
-                if (*handshakeReceivedPtr == m_cipher.scramble(handshakeBaseValue)) {
+                auto decrypted{
+                    m_cipher.decrypt(handshakeReceivedPtr->data(), handshakeReceivedPtr->size())
+                };
+                if (
+                    *reinterpret_cast<::std::uint64_t*>(decrypted.data()) ==
+                    m_cipher.scramble(handshakeBaseValue)
+                ) {
                     if (
                         dynamic_cast<::network::AServer<MessageType>&>(m_owner)
                             .onClientIdentificate(this->shared_from_this())
@@ -408,7 +416,6 @@ template <
                         ::std::cout << "[" << m_id << "] Identificated successfully\n";
                         this->readHeader();
                     } else {
-                        m_owner.onIdentificationDenial(this->shared_from_this());
                         this->disconnect();
                     }
                 } else {
@@ -431,18 +438,23 @@ template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientHandshake()
 {
-    this->clientReadHandshake(new ::std::uint64_t);
+    this->clientReadHandshake(
+        new ::std::array<::std::byte, ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))>
+    );
 }
 
 template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientReadHandshake(
-    ::std::uint64_t* handshakeReceivedPtr
+    ::std::array<
+        ::std::byte,
+        ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+    >* handshakeReceivedPtr
 )
 {
     ::boost::asio::async_read(
         m_socket,
-        ::boost::asio::buffer(handshakeReceivedPtr, sizeof(::std::uint64_t)),
+        ::boost::asio::buffer(handshakeReceivedPtr->data(), handshakeReceivedPtr->size()),
         [
             this,
             handshakeReceivedPtr
@@ -463,23 +475,25 @@ template <
 template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientResolveHandshake(
-    ::std::uint64_t* handshakeReceivedPtr
+    ::std::array<
+        ::std::byte,
+        ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+    >* handshakeReceivedPtr
 )
 {
-    *handshakeReceivedPtr = m_cipher.scramble(*handshakeReceivedPtr);
+    auto handshakeReceived{ m_cipher.decrypt(handshakeReceivedPtr->data(), handshakeReceivedPtr->size()) };
+    auto handshakeResolved{ m_cipher.scramble(*reinterpret_cast<::std::uint64_t*>(handshakeReceived.data())) };
+    auto handshakeResolvedEncrypted{ m_cipher.encrypt(&handshakeResolved, sizeof(handshakeResolved)) };
+    delete handshakeReceivedPtr;
     ::boost::asio::async_write(
         m_socket,
-        ::boost::asio::buffer(handshakeReceivedPtr, sizeof(::std::uint64_t)),
-        [
-            this,
-            handshakeReceivedPtr
-        ](
+        ::boost::asio::buffer(handshakeResolvedEncrypted.data(), handshakeResolvedEncrypted.size()),
+        [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (!errorCode) {
                 this->readHeader();
-                delete handshakeReceivedPtr;
             } else {
                 ::std::cerr << "[" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
                 this->disconnect();

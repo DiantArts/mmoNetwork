@@ -127,12 +127,15 @@ private:
     void serverHandshake();
 
     void serverSendHandshake(
-        ::std::uint64_t& handshakeValue
+        ::std::vector<::std::byte>&& encryptedHandshakeBaseValue
     );
 
     void serverReadHandshake(
         ::std::uint64_t& handshakeBaseValue,
-        ::std::uint64_t* handshakeReceivedPtr
+        ::std::array<
+            ::std::byte,
+            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+        >* handshakeReceivedPtr
     );
 
 
@@ -140,11 +143,17 @@ private:
     void clientHandshake();
 
     void clientReadHandshake(
-        ::std::uint64_t* handshakeReceivedPtr
+        ::std::array<
+            ::std::byte,
+            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+        >* handshakeReceivedPtr
     );
 
     void clientResolveHandshake(
-        ::std::uint64_t* handshakeReceivedPtr
+        ::std::array<
+            ::std::byte,
+            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
+        >* handshakeReceivedPtr
     );
 
 
@@ -172,7 +181,7 @@ private:
     ::network::Queue<::network::Message<MessageType>> m_messagesOut;
 
     // security
-    ::network::security::Cipher m_cipher;
+    ::security::Cipher m_cipher;
 
     ::network::Id m_id{ 1 };
 

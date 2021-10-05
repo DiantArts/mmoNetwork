@@ -1,8 +1,6 @@
 #include <pch.hpp>
 #include <Client/ClientExample.hpp>
 
-
-
 int main(int argc, char **argv)
 {
     try {

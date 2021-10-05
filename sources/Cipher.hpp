@@ -4,7 +4,7 @@
 
 
 
-namespace network::security {
+namespace security {
 
 
 
@@ -21,13 +21,6 @@ public:
 
 
     // ------------------------------------------------------------------ keyManagment
-
-    // returns false if the public key is invalid
-    [[ nodiscard ]] auto checkServerPublicKey()
-        -> bool;
-
-    [[ nodiscard ]] auto checkClientPublicKey()
-        -> bool;
 
     [[ nodiscard ]] auto getPublicKeyAddr()
         -> void*;
@@ -52,20 +45,29 @@ public:
     // ------------------------------------------------------------------ Encrypt
 
     // TODO: encrypt implementation
-    void encrypt(
-        void* rawMemory,
-        size_t size
-    ) const;
+    [[ nodiscard ]] auto encrypt(
+        const void* rawMemory,
+        ::std::size_t size
+    ) const
+        -> ::std::vector<::std::byte>;
+
+    [[ nodiscard ]] static inline constexpr auto getEncryptedSize(
+        ::std::size_t size
+    ) -> ::std::size_t
+    {
+        return crypto_box_SEALBYTES + size;
+    }
 
 
 
     // ------------------------------------------------------------------ Decrypt
 
     // TODO: decrypt implementation
-    void decrypt(
-        void* rawMemory,
-        size_t size
-    ) const;
+    [[ nodiscard ]] auto decrypt(
+        const void* rawMemory,
+        ::std::size_t size
+    ) const
+        -> ::std::vector<::std::byte>;
 
 
 
@@ -73,16 +75,14 @@ public:
 private:
 
     // personal keys
-    ::std::array<::std::byte, crypto_kx_PUBLICKEYBYTES> m_publicKey; // must bo shared to communicate
-    ::std::array<::std::byte, crypto_kx_SECRETKEYBYTES> m_secretKey; // must remain secret
-    ::std::array<::std::byte, crypto_kx_SESSIONKEYBYTES> m_receiverKey; // used to decrypt
-    ::std::array<::std::byte, crypto_kx_SESSIONKEYBYTES> m_senderKey; // used to encrypt
+    ::std::array<::std::byte, crypto_box_PUBLICKEYBYTES> m_publicKey; // must bo shared to communicate
+    ::std::array<::std::byte, crypto_box_SECRETKEYBYTES> m_privateKey; // must remain secret
 
     // target key
-    ::std::array<::std::byte, crypto_kx_PUBLICKEYBYTES> m_targetPublicKey; // shared key of the target
+    ::std::array<::std::byte, crypto_box_PUBLICKEYBYTES> m_targetPublicKey; // shared key of the target
 
 };
 
 
 
-} // namespace network::security
+} // namespace security

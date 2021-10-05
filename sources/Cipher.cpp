@@ -5,83 +5,48 @@
 
 // ------------------------------------------------------------------ *structors
 
-::network::security::Cipher::Cipher()
+::security::Cipher::Cipher()
 {
     if (::sodium_init() < 0) {
         throw ::std::runtime_error("Sodium lib couldn't be initialized");
     }
 
     /* Generate key pair */
-    ::crypto_kx_keypair(
+    ::crypto_box_keypair(
         reinterpret_cast<unsigned char*>(m_publicKey.data()),
-        reinterpret_cast<unsigned char*>(m_secretKey.data())
+        reinterpret_cast<unsigned char*>(m_privateKey.data())
     );
 }
 
-::network::security::Cipher::~Cipher() = default;
+::security::Cipher::~Cipher() = default;
 
 
 
 // ------------------------------------------------------------------ keyManagment
 
-// returns false if the public key is invalid
-auto ::network::security::Cipher::checkServerPublicKey()
-    -> bool
-{
-    // Compute two shared keys using the server's public key and the client's secret key.
-    if (::crypto_kx_client_session_keys(
-        reinterpret_cast<unsigned char*>(m_receiverKey.data()),
-        reinterpret_cast<unsigned char*>(m_senderKey.data()),
-        reinterpret_cast<const unsigned char*>(m_publicKey.data()),
-        reinterpret_cast<const unsigned char*>(m_secretKey.data()),
-        reinterpret_cast<const unsigned char*>(m_targetPublicKey.data())
-    ) != 0) {
-        ::std::cerr << "[CIPHER] Invalid server public key." << ::std::endl;
-        return false;
-    }
-    return true;
-}
-
-auto ::network::security::Cipher::checkClientPublicKey()
-    -> bool
-{
-    // Compute two shared keys using the client's public key and the server's secret key.
-    if (::crypto_kx_server_session_keys(
-        reinterpret_cast<unsigned char*>(m_receiverKey.data()),
-        reinterpret_cast<unsigned char*>(m_senderKey.data()),
-        reinterpret_cast<const unsigned char*>(m_publicKey.data()),
-        reinterpret_cast<const unsigned char*>(m_secretKey.data()),
-        reinterpret_cast<const unsigned char*>(m_targetPublicKey.data())
-    ) != 0) {
-        ::std::cerr << "[CIPHER] Invalid client public key." << ::std::endl;
-        return false;
-    }
-    return true;
-}
-
-auto ::network::security::Cipher::getPublicKeyAddr()
+auto ::security::Cipher::getPublicKeyAddr()
     -> void*
 {
     return m_publicKey.data();
 }
 
-auto ::network::security::Cipher::getTargetPublicKeyAddr()
+auto ::security::Cipher::getTargetPublicKeyAddr()
     -> void*
 {
     return m_targetPublicKey.data();
 }
 
-auto ::network::security::Cipher::getPublicKeySize() const
+auto ::security::Cipher::getPublicKeySize() const
     -> ::std::size_t
 {
-    return crypto_kx_PUBLICKEYBYTES;
+    return m_publicKey.size();
 }
 
 
 
 // ------------------------------------------------------------------ Handshake
 
-auto ::network::security::Cipher::scramble(
+auto ::security::Cipher::scramble(
     ::std::uint64_t data
 ) -> ::std::uint64_t
 {
@@ -111,18 +76,43 @@ auto ::network::security::Cipher::scramble(
 
 // ------------------------------------------------------------------ Encrypt
 
-void ::network::security::Cipher::encrypt(
-    void* rawMemory,
+auto ::security::Cipher::encrypt(
+    const void* rawMemory,
     size_t size
 ) const
-{}
+    -> ::std::vector<::std::byte>
+{
+    ::std::vector<::std::byte> encrypted{ crypto_box_SEALBYTES + size };
+    ::crypto_box_seal(
+        reinterpret_cast<unsigned char*>(encrypted.data()),
+        reinterpret_cast<const unsigned char*>(rawMemory),
+        size,
+        reinterpret_cast<const unsigned char*>(m_targetPublicKey.data())
+    );
+    return encrypted;
+}
 
 
 
 // ------------------------------------------------------------------ Decrypt
 
-void ::network::security::Cipher::decrypt(
-    void* rawMemory,
+auto ::security::Cipher::decrypt(
+    const void* rawMemory,
     size_t size
 ) const
-{}
+    -> ::std::vector<::std::byte>
+{
+    ::std::vector<::std::byte> decrypted{ size - crypto_box_SEALBYTES };
+    if (
+        ::crypto_box_seal_open(
+            reinterpret_cast<unsigned char*>(decrypted.data()),
+            reinterpret_cast<const unsigned char*>(rawMemory),
+            size,
+            reinterpret_cast<const unsigned char*>(m_publicKey.data()),
+            reinterpret_cast<const unsigned char*>(m_privateKey.data())
+        )
+    ) {
+        ::std::runtime_error("Decryption failed, invalid data.");
+    }
+    return decrypted;
+}
