@@ -1,6 +1,6 @@
 #pragma once
 
-namespace network::detail {
+namespace detail {
 
 
 
@@ -15,4 +15,4 @@ template <
 
 
 
-} // namespace network::detail
+} // namespace detail

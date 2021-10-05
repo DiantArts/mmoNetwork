@@ -5,7 +5,7 @@
 
 
 
-namespace network {
+namespace detail {
 
 
 
@@ -71,6 +71,8 @@ public:
 
     void wait();
 
+    void notify();
+
 
 
 private:
@@ -85,4 +87,4 @@ private:
 
 
 
-} // namespace network
+} // namespace detail

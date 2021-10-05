@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Id.hpp>
+#include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
-#include <Connection.hpp>
-#include <MessageType.hpp>
+#include <Network/Connection.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -12,7 +12,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > class ANode {
 
 public:
@@ -52,7 +52,7 @@ public:
     }
 
     auto getIncommingMessages()
-        -> ::network::Queue<::network::OwnedMessage<MessageType>>&;
+        -> ::detail::Queue<::network::OwnedMessage<MessageType>>&;
 
 
 
@@ -111,7 +111,7 @@ private:
     ::boost::asio::io_context m_asioContext;
     ::std::thread m_threadContext;
 
-    ::network::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
+    ::detail::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
 
     ANode<MessageType>::Type m_type;
 

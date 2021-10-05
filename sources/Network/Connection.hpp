@@ -1,13 +1,13 @@
 #pragma once
 
-#include <Queue.hpp>
-#include <Cipher.hpp>
-#include <Id.hpp>
+#include <Detail/Queue.hpp>
+#include <Security/Cipher.hpp>
+#include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
 
-namespace network{ template <::network::detail::IsEnum MessageType> class ANode; }
+namespace network{ template <::detail::IsEnum MessageType> class ANode; }
 
 
 
@@ -16,7 +16,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > class Connection
     : public ::std::enable_shared_from_this<Connection<MessageType>>
 {
@@ -38,7 +38,7 @@ public:
     // ------------------------------------------------------------------ async - connection
 
     auto connectToClient(
-        ::network::Id id
+        ::detail::Id id
     ) -> bool;
 
     void connectToServer(
@@ -67,7 +67,7 @@ public:
     // ------------------------------------------------------------------ async - out
 
     void send(
-        ::network::detail::IsEnum auto&& messageType,
+        ::detail::IsEnum auto&& messageType,
         auto&&... args
     )
     {
@@ -101,7 +101,7 @@ public:
     // ------------------------------------------------------------------ other
 
     [[ nodiscard ]] auto getId() const
-        -> ::network::Id;
+        -> ::detail::Id;
 
 
 
@@ -176,12 +176,12 @@ private:
     ::network::Message<MessageType> m_bufferIn;
 
     // out
-    ::network::Queue<::network::Message<MessageType>> m_messagesOut;
+    ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
 
     // security
     ::security::Cipher m_cipher;
 
-    ::network::Id m_id{ 1 };
+    ::detail::Id m_id{ 1 };
 
 };
 

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace network {
+namespace detail {
 
 
 
@@ -71,6 +71,6 @@ private:
 
 
 
-} // namespace network
+} // namespace detail
 
-#include <Id.impl.hpp>
+#include <Detail/Id.impl.hpp>

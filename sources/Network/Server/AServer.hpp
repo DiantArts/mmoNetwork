@@ -1,10 +1,10 @@
 #pragma once
 
-#include <Id.hpp>
+#include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
-#include <Connection.hpp>
-#include <MessageType.hpp>
-#include <ANode.hpp>
+#include <Network/Connection.hpp>
+#include <Network/MessageType.hpp>
+#include <Network/ANode.hpp>
 
 
 
@@ -13,7 +13,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > class AServer
     : public ::network::ANode<MessageType>
 {
@@ -134,7 +134,7 @@ private:
 
     ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_connections;
 
-    ::network::Id m_idCounter{ 1 };
+    ::detail::Id m_idCounter{ 1 };
 
 };
 

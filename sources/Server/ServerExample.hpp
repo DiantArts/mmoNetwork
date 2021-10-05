@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Server/AServer.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
+#include <Network/Server/AServer.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
 
 
 

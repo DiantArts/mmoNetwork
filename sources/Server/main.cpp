@@ -16,9 +16,23 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
 
+        ::std::thread thread{
+            [&server](){
+                ::std::string str;
+                while (server.isRunning()) {
+                    ::std::getline(::std::cin, str);
+                    if (str == "/q") {
+                        server.stop();
+                    }
+                }
+            }
+        };
+
         while (server.isRunning()) {
             server.blockingPullIncommingMessages();
         }
+        thread.join();
+
         return EXIT_SUCCESS;
 
     } catch (const ::std::exception& e) {

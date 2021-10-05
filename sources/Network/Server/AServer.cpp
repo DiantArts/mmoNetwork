@@ -1,6 +1,6 @@
 #include <pch.hpp>
-#include <Server/AServer.hpp>
-#include <MessageType.hpp>
+#include <Network/Server/AServer.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -13,7 +13,7 @@ template class ::network::AServer<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::AServer<MessageType>::AServer(
     const ::std::uint16_t port
 )
@@ -27,7 +27,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::AServer<MessageType>::~AServer()
 {
     this->stop();
@@ -38,7 +38,7 @@ template <
 // ------------------------------------------------------------------ running
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AServer<MessageType>::start()
     -> bool
 {
@@ -57,25 +57,28 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::stop()
 {
-    // stop everything running in parallele
-    this->getAsioContext().stop();
-    if(this->getThreadContext().joinable()) {
-        this->getThreadContext().join();
-    }
+    if (this->isRunning()) {
+        // stop everything running in parallele
+        this->getAsioContext().stop();
+        if(this->getThreadContext().joinable()) {
+            this->getThreadContext().join();
+        }
+        this->getIncommingMessages().notify();
 
-    ::std::cout << "Stopped" << '\n';
+        ::std::cout << "Stopped" << '\n';
+    }
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AServer<MessageType>::isRunning()
     -> bool
 {
     // TODO: isRunning implemetation
-    return true;
+    return !this->getAsioContext().stopped();
 }
 
 
@@ -83,7 +86,7 @@ template <
 // ------------------------------------------------------------------ in - async
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::startReceivingConnections()
 {
     m_asioAcceptor.async_accept(
@@ -117,7 +120,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::pullIncommingMessage()
 {
     auto message{ this->getIncommingMessages().pop_front() };
@@ -126,7 +129,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::pullIncommingMessages()
 {
     while (!this->getIncommingMessages().empty()) {
@@ -135,7 +138,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::blockingPullIncommingMessages()
 {
     this->getIncommingMessages().wait();
@@ -147,7 +150,7 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::send(
     const ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> client
@@ -169,7 +172,7 @@ template <
 
 // refuses the connection by returning false, when connection is done
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AServer<MessageType>::onClientConnect(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 ) -> bool
@@ -178,7 +181,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AServer<MessageType>::onClientIdentificate(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 ) -> bool

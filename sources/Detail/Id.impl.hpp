@@ -3,29 +3,29 @@
 // ------------------------------------------------------------------ *structors
 
 // default value is 0
-constexpr ::network::Id::Id()
+constexpr ::detail::Id::Id()
     : m_value{ 0 }
 {}
 
-constexpr ::network::Id::Id(
+constexpr ::detail::Id::Id(
     ::std::integral auto baseValue
 )
-    : m_value{ static_cast<Id::Type>(baseValue) }
+    : m_value{ static_cast<detail::Id::Type>(baseValue) }
 {}
 
-constexpr ::network::Id::~Id() = default;
+constexpr ::detail::Id::~Id() = default;
 
 
 
 // ------------------------------------------------------------------ Get
 
-constexpr auto ::network::Id::get() const
-    -> ::network::Id::Type
+constexpr auto ::detail::Id::get() const
+    -> ::detail::Id::Type
 {
     return m_value;
 }
 
-constexpr ::network::Id::operator ::network::Id::Type() const
+constexpr ::detail::Id::operator ::detail::Id::Type() const
 {
     return m_value;
 }

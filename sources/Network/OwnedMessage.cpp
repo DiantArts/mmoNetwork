@@ -1,6 +1,6 @@
 #include <pch.hpp>
-#include <OwnedMessage.hpp>
-#include <MessageType.hpp>
+#include <Network/OwnedMessage.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -13,7 +13,7 @@ template class ::network::OwnedMessage<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::OwnedMessage<MessageType>::OwnedMessage(
     ::std::shared_ptr<::network::Connection<MessageType>> remote,
     ::network::Message<MessageType> message
@@ -23,7 +23,7 @@ template <
 {}
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::OwnedMessage<MessageType>::~OwnedMessage() = default;
 
 
@@ -31,7 +31,7 @@ template <
 // ------------------------------------------------------------------ informations
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::OwnedMessage<MessageType>::getRemote() const
     -> ::std::shared_ptr<::network::Connection<MessageType>>
 {

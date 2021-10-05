@@ -1,9 +1,8 @@
 #pragma once
 
-#include <Message.hpp>
+#include <Network/Message.hpp>
 
-// forward decleration
-namespace network { template <::network::detail::IsEnum MessageType> class Connection; }
+namespace network { template <::detail::IsEnum MessageType> class Connection; }
 
 
 
@@ -12,7 +11,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > class OwnedMessage
     : public ::network::Message<MessageType>
 {

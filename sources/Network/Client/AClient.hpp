@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Connection.hpp>
-#include <MessageType.hpp>
-#include <Queue.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
-#include <ANode.hpp>
+#include <Network/Connection.hpp>
+#include <Network/MessageType.hpp>
+#include <Detail/Queue.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
+#include <Network/ANode.hpp>
 
 
 
@@ -14,7 +14,7 @@ namespace network {
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > class AClient
     : public ::network::ANode<MessageType>
 {
@@ -55,7 +55,7 @@ public:
 
     // construct and send
     void send(
-        ::network::detail::IsEnum auto&& messageType,
+        ::detail::IsEnum auto&& messageType,
         auto&&... args
     )
     {

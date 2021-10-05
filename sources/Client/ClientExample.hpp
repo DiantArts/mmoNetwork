@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Client/AClient.hpp>
-#include <MessageType.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
+#include <Network/Client/AClient.hpp>
+#include <Network/MessageType.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
 
 
 
@@ -31,7 +31,7 @@ public:
             auto message{ this->getIncommingMessages().pop_front() };
             switch (message.getType()) {
             case ::network::MessageType::Message: {
-                ::std::cout << "message from [" << message.extract<::network::Id>() << "]" << ::std::endl;
+                ::std::cout << "message from [" << message.extract<::detail::Id>() << "]" << ::std::endl;
                 break;
             } case ::network::MessageType::Ping: {
                 auto timeNow{ ::std::chrono::system_clock::now() };

@@ -1,6 +1,6 @@
 #include <pch.hpp>
-#include <ANode.hpp>
-#include <MessageType.hpp>
+#include <Network/ANode.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -13,7 +13,7 @@ template class ::network::ANode<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::ANode<MessageType>::ANode(
     ANode<MessageType>::Type type
 )
@@ -21,7 +21,7 @@ template <
 {}
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::ANode<MessageType>::~ANode() = default;
 
 
@@ -29,7 +29,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::pullIncommingMessage()
 {
     auto message{ m_messagesIn.pop_front() };
@@ -37,7 +37,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::pullIncommingMessages()
 {
     while (!m_messagesIn.empty()) {
@@ -46,7 +46,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::blockingPullIncommingMessages()
 {
     m_messagesIn.wait();
@@ -54,9 +54,9 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::ANode<MessageType>::getIncommingMessages()
-    -> ::network::Queue<::network::OwnedMessage<MessageType>>&
+    -> ::detail::Queue<::network::OwnedMessage<MessageType>>&
 {
     return m_messagesIn;
 }
@@ -66,7 +66,7 @@ template <
 // ------------------------------------------------------------------ getter
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::ANode<MessageType>::getAsioContext()
     -> ::boost::asio::io_context&
 {
@@ -74,7 +74,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::ANode<MessageType>::getThreadContext()
     -> ::std::thread&
 {
@@ -82,7 +82,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::ANode<MessageType>::getType()
     -> ANode<MessageType>::Type
 {
@@ -95,7 +95,7 @@ template <
 
 // before the actual disconnection
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::onDisconnect(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
@@ -105,7 +105,7 @@ template <
 
 // after receiving
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::onReceive(
     const ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -114,7 +114,7 @@ template <
 
 // before sending
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::onSend(
     const ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -126,14 +126,14 @@ template <
 // ------------------------------------------------------------------ error user methods
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::onConnectionDenial(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
 {}
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::ANode<MessageType>::onIdentificationDenial(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )

@@ -1,6 +1,6 @@
 #include <pch.hpp>
-#include <Client/AClient.hpp>
-#include <MessageType.hpp>
+#include <Network/Client/AClient.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -13,13 +13,13 @@ template class ::network::AClient<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::AClient<MessageType>::AClient()
     : ::network::ANode<MessageType>{ ::network::ANode<MessageType>::Type::client }
 {}
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::AClient<MessageType>::~AClient()
 {
     this->disconnect();
@@ -30,7 +30,7 @@ template <
 // ------------------------------------------------------------------ connection
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AClient<MessageType>::connect(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -51,25 +51,30 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AClient<MessageType>::disconnect()
 {
-    this->onDisconnect(m_connection);
+    if (this->isConnected()) {
+        this->onDisconnect(m_connection);
 
-    m_connection->disconnect();
+        m_connection->disconnect();
 
-    // stop everything running in parallele
-    this->getAsioContext().stop();
-    if(this->getThreadContext().joinable()) {
-        this->getThreadContext().join();
+        // stop everything running in parallele
+        this->getAsioContext().stop();
+        if(this->getThreadContext().joinable()) {
+            this->getThreadContext().join();
+        }
+
+        // destroy the connection
+        m_connection.reset();
+        this->getIncommingMessages().notify();
+
+        ::std::cout << "Disconnected" << '\n';
     }
-
-    // destroy the connection
-    m_connection.reset();
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::AClient<MessageType>::isConnected()
     -> bool
 {
@@ -81,7 +86,7 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AClient<MessageType>::send(
     ::network::Message<MessageType>& message
 )
@@ -91,11 +96,11 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::AClient<MessageType>::send(
     ::network::Message<MessageType>&& message
 )
 {
     this->onSend(message, m_connection);
-    m_connection->send(::std::move(message)); // TODO: replace that
+    m_connection->send(::std::move(message));
 }

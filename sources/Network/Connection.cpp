@@ -1,10 +1,10 @@
 #include <pch.hpp>
-#include <Connection.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
-#include <MessageType.hpp>
-#include <ANode.hpp>
-#include <Server/AServer.hpp>
+#include <Network/Connection.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
+#include <Network/MessageType.hpp>
+#include <Network/ANode.hpp>
+#include <Network/Server/AServer.hpp>
 
 
 // ------------------------------------------------------------------ explicit instantiations
@@ -16,7 +16,7 @@ template class ::network::Connection<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::Connection<MessageType>::Connection(
     ::boost::asio::ip::tcp::socket socket,
     ::network::ANode<MessageType>& connectionOwner
@@ -27,7 +27,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::Connection<MessageType>::~Connection() = default;
 
 
@@ -35,9 +35,9 @@ template <
 // ------------------------------------------------------------------ async - connection
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::Connection<MessageType>::connectToClient(
-    ::network::Id id
+    ::detail::Id id
 )
     -> bool
 {
@@ -66,7 +66,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::connectToServer(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -97,7 +97,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::disconnect()
 {
     if (this->isConnected()) {
@@ -113,7 +113,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::Connection<MessageType>::isConnected() const
     -> bool
 {
@@ -126,7 +126,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::readHeader()
 {
     ::boost::asio::async_read(
@@ -154,7 +154,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::readBody()
 {
     ::boost::asio::async_read(
@@ -177,7 +177,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::transferBufferToInQueue()
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
@@ -195,7 +195,7 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::send(
     ::network::Message<MessageType> message
 )
@@ -214,7 +214,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::writeHeader()
 {
     ::boost::asio::async_write(
@@ -244,7 +244,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::writeBody()
 {
     ::boost::asio::async_write(
@@ -274,9 +274,9 @@ template <
 // ------------------------------------------------------------------ other
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > [[ nodiscard ]] auto ::network::Connection<MessageType>::getId() const
-    -> ::network::Id
+    -> ::detail::Id
 {
     return m_id;
 }
@@ -286,7 +286,7 @@ template <
 // ------------------------------------------------------------------ async - securityProtocol
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::identificate()
 {
     this->sendPublicKey();
@@ -296,7 +296,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::sendPublicKey()
 {
     ::boost::asio::async_write(
@@ -315,7 +315,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::readPublicKey()
 {
     ::boost::asio::async_read(
@@ -345,7 +345,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::serverHandshake()
 {
     auto handshakeBaseValue{ static_cast<::std::uint64_t>(
@@ -359,7 +359,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::serverSendHandshake(
     ::std::vector<::std::byte>&& encryptedHandshakeBaseValue
 )
@@ -380,7 +380,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::serverReadHandshake(
     ::std::uint64_t& handshakeBaseValue,
     ::std::array<
@@ -434,7 +434,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientHandshake()
 {
     this->clientReadHandshake(
@@ -443,7 +443,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientReadHandshake(
     ::std::array<
         ::std::byte,
@@ -472,7 +472,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::clientResolveHandshake(
     ::std::array<
         ::std::byte,

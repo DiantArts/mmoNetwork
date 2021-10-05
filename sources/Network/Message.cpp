@@ -1,6 +1,6 @@
 #include <pch.hpp>
-#include <Message.hpp>
-#include <MessageType.hpp>
+#include <Network/Message.hpp>
+#include <Network/MessageType.hpp>
 
 
 
@@ -13,12 +13,12 @@ template class ::network::Message<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::Message<MessageType>::Message()
 {}
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > ::network::Message<MessageType>::~Message() = default;
 
 
@@ -27,7 +27,7 @@ template <
 
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > [[ nodiscard ]] auto ::network::Message<MessageType>::getBodySize() const
     -> ::std::size_t
 {
@@ -35,7 +35,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > [[ nodiscard ]] auto ::network::Message<MessageType>::getSize() const
     -> ::std::size_t
 {
@@ -43,7 +43,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > [[ nodiscard ]] auto ::network::Message<MessageType>::isBodyEmpty() const
     -> bool
 {
@@ -55,7 +55,7 @@ template <
 // ------------------------------------------------------------------ header
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::Message<MessageType>::getHeaderAddr()
     -> void*
 {
@@ -63,7 +63,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::Message<MessageType>::getType() const
     -> MessageType
 {
@@ -71,7 +71,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Message<MessageType>::setType(
     MessageType type
 )
@@ -84,14 +84,14 @@ template <
 // ------------------------------------------------------------------ bodyManipulation
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Message<MessageType>::updateBodySize()
 {
     m_body.resize(m_header.bodySize);
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Message<MessageType>::resize(
     ::std::size_t newSize
 )
@@ -100,7 +100,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > auto ::network::Message<MessageType>::getBodyAddr()
     -> void*
 {
@@ -112,7 +112,7 @@ template <
 // ------------------------------------------------------------------ debug
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Message<MessageType>::displayHeader(
     const char direction[2]
 ) const
@@ -123,7 +123,7 @@ template <
 }
 
 template <
-    ::network::detail::IsEnum MessageType
+    ::detail::IsEnum MessageType
 > void ::network::Message<MessageType>::displayBody(
     const char direction[2]
 ) const

@@ -1,15 +1,15 @@
 #include <pch.hpp>
-#include <Queue.hpp>
-#include <Message.hpp>
-#include <OwnedMessage.hpp>
-#include <MessageType.hpp>
+#include <Detail/Queue.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
+#include <Network/MessageType.hpp>
 
 
 
 // ------------------------------------------------------------------ explicit instantiations
 
-template class ::network::Queue<::network::Message<::network::MessageType>>;
-template class ::network::Queue<::network::OwnedMessage<::network::MessageType>>;
+template class ::detail::Queue<::network::Message<::network::MessageType>>;
+template class ::detail::Queue<::network::OwnedMessage<::network::MessageType>>;
 
 
 
@@ -17,11 +17,11 @@ template class ::network::Queue<::network::OwnedMessage<::network::MessageType>>
 
 template <
     typename Type
-> ::network::Queue<Type>::Queue() = default;
+> ::detail::Queue<Type>::Queue() = default;
 
 template <
     typename Type
-> ::network::Queue<Type>::~Queue()
+> ::detail::Queue<Type>::~Queue()
 {
     this->clear();
 }
@@ -32,7 +32,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::front()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::front()
     -> Type&
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -41,7 +41,7 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::push_front(
+> void ::detail::Queue<Type>::push_front(
     Type item
 )
 {
@@ -50,15 +50,12 @@ template <
         m_deque.emplace_front(::std::move(item));
     }
 
-    { // notify for a new element
-        ::std::scoped_lock lock{ m_mutexBlocker };
-        m_blocker.notify_one();
-    }
+    this->notify();
 }
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::pop_front()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::pop_front()
     -> Type
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -69,7 +66,7 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::remove_front()
+> void ::detail::Queue<Type>::remove_front()
 {
     ::std::scoped_lock lock{ m_mutexQueue };
     m_deque.pop_front();
@@ -81,7 +78,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::back()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::back()
     -> Type&
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -90,7 +87,7 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::push_back(
+> void ::detail::Queue<Type>::push_back(
     Type item
 )
 {
@@ -99,15 +96,12 @@ template <
         m_deque.emplace_back(::std::move(item));
     }
 
-    { // notify for a new element
-        ::std::scoped_lock lock{ m_mutexBlocker };
-        m_blocker.notify_one();
-    }
+    this->notify();
 }
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::pop_back()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::pop_back()
     -> Type
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -118,7 +112,7 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::remove_back()
+> void ::detail::Queue<Type>::remove_back()
 {
     ::std::scoped_lock lock{ m_mutexQueue };
     m_deque.pop_back();
@@ -130,7 +124,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::empty()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::empty()
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -139,7 +133,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::network::Queue<Type>::count()
+> [[ nodiscard ]] auto ::detail::Queue<Type>::count()
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -148,7 +142,7 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::clear()
+> void ::detail::Queue<Type>::clear()
 {
     ::std::scoped_lock lock{ m_mutexQueue };
     m_deque.clear();
@@ -160,10 +154,16 @@ template <
 
 template <
     typename Type
-> void ::network::Queue<Type>::wait()
+> void ::detail::Queue<Type>::wait()
 {
-    while (this->empty()) {
-        ::std::unique_lock lock{ m_mutexBlocker };
-        m_blocker.wait(lock);
-    }
+    ::std::unique_lock lock{ m_mutexBlocker };
+    m_blocker.wait(lock);
+}
+
+template <
+    typename Type
+> void ::detail::Queue<Type>::notify()
+{
+    ::std::scoped_lock lock{ m_mutexBlocker };
+    m_blocker.notify_one();
 }
