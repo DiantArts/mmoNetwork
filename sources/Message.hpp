@@ -14,11 +14,11 @@ template <
 
 public:
 
-    struct Header {
+    // ------------------------------------------------------------------ Header
 
+    struct Header {
         MessageType packetType{};
         ::std::uint16_t bodySize{ 0 };
-
     };
 
 
@@ -27,9 +27,9 @@ public:
 
     // ------------------------------------------------------------------ *structors
 
-    inline Message() = default;
+    Message();
 
-    inline Message(
+    Message(
         MessageType&& messageType,
         auto&&... args
     )
@@ -38,14 +38,14 @@ public:
         this->insert(::std::forward<decltype(args)>(args)...);
     }
 
-    inline ~Message() = default;
+    ~Message();
 
 
 
     // ------------------------------------------------------------------ insert
     // Insert any POD-like data into the body
 
-    inline void insert(
+    void insert(
         ::network::detail::IsStandardLayout auto&& data
     )
     {
@@ -58,14 +58,14 @@ public:
     }
 
     // Multiple insertions
-    inline void insert(
+    void insert(
         ::network::detail::IsStandardLayout auto&&... data
     )
     {
         (this->insert(::std::forward<decltype(data)>(data)), ...);
     }
 
-    inline auto operator<<(
+    auto operator<<(
         ::network::detail::IsStandardLayout auto&& data
     ) -> Message<MessageType>&
     {
@@ -73,7 +73,7 @@ public:
         return *this;
     }
 
-    inline auto operator<<(
+    auto operator<<(
         const ::network::detail::IsStandardLayout auto& data
     ) -> Message<MessageType>&
     {
@@ -87,7 +87,7 @@ public:
     // ------------------------------------------------------------------ extract
     // Extract any POD-like data from the end of the body
 
-    inline auto extract(
+    auto extract(
         ::network::detail::IsStandardLayout auto& data
     ) -> Message<MessageType>&
     {
@@ -104,7 +104,7 @@ public:
 
     template <
         ::network::detail::IsStandardLayout DataType
-    > inline auto extract()
+    > auto extract()
         -> DataType
     {
         DataType data;
@@ -120,7 +120,7 @@ public:
         return data;
     }
 
-    inline auto operator>>(
+    auto operator>>(
         ::network::detail::IsStandardLayout auto& data
     ) -> Message<MessageType>&
     {
@@ -137,68 +137,41 @@ public:
         return sizeof(Message<MessageType>::Header);
     }
 
-    [[ nodiscard ]] inline auto getBodySize() const
-        -> ::std::size_t
-    {
-        return m_header.bodySize;
-    }
+    [[ nodiscard ]] auto getBodySize() const
+        -> ::std::size_t;
 
-    [[ nodiscard ]] inline auto getSize() const
-        -> ::std::size_t
-    {
-        return this->getHeaderSize() + this->getBodySize();
-    }
+    [[ nodiscard ]] auto getSize() const
+        -> ::std::size_t;
 
-    [[ nodiscard ]] inline auto isBodyEmpty() const
-        -> bool
-    {
-        return m_header.bodySize == 0;
-    }
+    [[ nodiscard ]] auto isBodyEmpty() const
+        -> bool;
 
 
 
     // ------------------------------------------------------------------ header
 
     auto getHeaderAddr()
-        -> void*
-    {
-        return &m_header;
-    }
+        -> void*;
 
     auto getType() const
-        -> MessageType
-    {
-        return m_header.packetType;
-    }
+        -> MessageType;
 
     void setType(
         MessageType type
-    )
-    {
-        m_header.packetType = type;
-    }
+    );
 
 
 
     // ------------------------------------------------------------------ bodyManipulation
 
-    void updateBodySize()
-    {
-        m_body.resize(m_header.bodySize);
-    }
+    void updateBodySize();
 
     void resize(
         ::std::size_t newSize
-    )
-    {
-        m_body.resize(newSize);
-    }
+    );
 
     auto getBodyAddr()
-        -> void*
-    {
-        return m_body.data();
-    }
+        -> void*;
 
 
 
@@ -206,20 +179,11 @@ public:
 
     void displayHeader(
         const char direction[2]
-    ) const
-    {
-        ::std::cout << direction << ' '
-            << (int)m_header.packetType << ' '
-            << (int)m_header.bodySize << '\n';
-    }
+    ) const;
 
     void displayBody(
         const char direction[2]
-    ) const
-    {
-        ::std::cout << direction << " [body]\n";
-        // ::std::cout.write((char*)m_body.data(), m_header.bodySize);
-    }
+    ) const;
 
 
 

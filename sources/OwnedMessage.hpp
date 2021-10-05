@@ -21,25 +21,19 @@ public:
 
     // ------------------------------------------------------------------ *structors
 
-    inline OwnedMessage(
+    OwnedMessage(
         ::std::shared_ptr<::network::Connection<MessageType>> remote,
         ::network::Message<MessageType> message
-    )
-        : ::network::Message<MessageType>{ ::std::move(message) }
-        , m_remote{ remote }
-    {}
+    );
 
-    inline ~OwnedMessage() = default;
+    ~OwnedMessage();
 
 
 
     // ------------------------------------------------------------------ informations
 
     auto getRemote() const
-        -> ::std::shared_ptr<::network::Connection<MessageType>>
-    {
-        return m_remote;
-    }
+        -> ::std::shared_ptr<::network::Connection<MessageType>>;
 
 
 

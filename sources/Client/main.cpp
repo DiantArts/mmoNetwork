@@ -1,6 +1,8 @@
 #include <pch.hpp>
 #include <Client/ClientExample.hpp>
 
+
+
 int main(int argc, char **argv)
 {
     try {
@@ -17,6 +19,7 @@ int main(int argc, char **argv)
             [&client](){
                 ::std::size_t i{ 0 };
                 while (client.isConnected()) {
+                    client.getIncommingMessages().wait();
                     client.handleMessagesIn();
                 }
             }

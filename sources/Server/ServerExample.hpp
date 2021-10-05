@@ -1,22 +1,13 @@
 #pragma once
 
 #include <Server/AServer.hpp>
-
-
-
-enum class MessageType : uint32_t
-{
-    ConnectionAccepted,
-    ConnectionDenied,
-    Ping,
-    MessageAll,
-    Message
-};
+#include <Message.hpp>
+#include <OwnedMessage.hpp>
 
 
 
 class ServerExample
-    : public ::network::AServer<::MessageType>
+    : public ::network::AServer<::network::MessageType>
 {
 
 public:
@@ -28,7 +19,7 @@ public:
     ServerExample(
         const ::std::uint16_t port
     )
-        : ::network::AServer<::MessageType>{ port }
+        : ::network::AServer<::network::MessageType>{ port }
     {}
 
     ~ServerExample() = default;
@@ -39,30 +30,44 @@ private:
 
     // ------------------------------------------------------------------ user methods
 
+    // refuses the connection by returning false
+    virtual auto onClientConnect(
+        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
+    ) -> bool
+        override
+    {
+        return true;
+    }
+
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
+    ) override
+    {}
+
     // after receiving
     virtual void onReceive(
-        const ::network::Message<::MessageType>& message,
-        AServer<::MessageType>::ClientConnectionPtr client
+        const ::network::Message<::network::MessageType>& message,
+        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
-        case ::MessageType::MessageAll: {
-            ::std::cout << "[" << client->getId() << "]: Message All\n";
-            ::network::Message<::MessageType> newMessage{ ::MessageType::Message };
-            newMessage << client->getId();
-            this->sendToAllClient(newMessage, client);
+        case ::network::MessageType::MessageAll: {
+            ::std::cout << "[" << connection->getId() << "]: Message All\n";
+            ::network::Message<::network::MessageType> newMessage{ ::network::MessageType::Message };
+            newMessage << connection->getId();
+            this->sendToAllClient(newMessage, connection);
             break;
-        } case ::MessageType::Ping:
+        } case ::network::MessageType::Ping:
         default:
-            client->send(message);
+            connection->send(message);
             break;
         }
     }
 
     // before sending
     virtual void onSend(
-        const ::network::Message<::MessageType>& message,
-        AServer<::MessageType>::ClientConnectionPtr client
+        const ::network::Message<::network::MessageType>& message,
+        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
     ) override
     {}
 

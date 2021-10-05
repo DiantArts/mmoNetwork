@@ -1,32 +1,28 @@
 #pragma once
 
 #include <Client/AClient.hpp>
-
-
-
-enum class MessageType : uint32_t
-{
-    ConnectionAccepted,
-    ConnectionDenied,
-    Ping,
-    MessageAll,
-    Message
-};
+#include <MessageType.hpp>
+#include <Message.hpp>
+#include <OwnedMessage.hpp>
 
 
 
 class ClientExample
-    : public ::network::AClient<::MessageType>
+    : public ::network::AClient<::network::MessageType>
 {
+
 public:
+
+    // ------------------------------------------------------------------ Other
+
     void pingServer()
     {
-        this->send(::MessageType::Ping, ::std::chrono::system_clock::now());
+        this->send(::network::MessageType::Ping, ::std::chrono::system_clock::now());
     }
 
     void messageServer()
     {
-        this->send(::MessageType::MessageAll);
+        this->send(::network::MessageType::MessageAll);
     }
 
     void handleMessagesIn()
@@ -34,13 +30,10 @@ public:
         while (!this->getIncommingMessages().empty()) {
             auto message{ this->getIncommingMessages().pop_front() };
             switch (message.getType()) {
-            case ::MessageType::ConnectionAccepted: {
-                ::std::cout << "[CLIENT] Authentification accepted" << ::std::endl;
-                break;
-            } case ::MessageType::Message: {
+            case ::network::MessageType::Message: {
                 ::std::cout << "message from [" << message.extract<::network::Id>() << "]" << ::std::endl;
                 break;
-            } case ::MessageType::Ping: {
+            } case ::network::MessageType::Ping: {
                 auto timeNow{ ::std::chrono::system_clock::now() };
                 decltype(timeNow) timeThen;
                 message >> timeThen;
@@ -50,4 +43,5 @@ public:
             }
         }
     }
+
 };

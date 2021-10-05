@@ -17,106 +17,69 @@ public:
 
     // ------------------------------------------------------------------ *structors
 
-    inline Queue() = default;
+    Queue();
 
-    inline ~Queue()
-    {
-        this->clear();
-    }
+    ~Queue();
 
 
 
     // ------------------------------------------------------------------ front
 
-    [[ nodiscard ]] inline auto front()
-        -> Type&
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        return m_deque.front();
-    }
+    [[ nodiscard ]] auto front()
+        -> Type&;
 
-    inline void push_front(
+    void push_front(
         Type item
-    )
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        m_deque.emplace_back(::std::move(item));
-    }
+    );
 
-    [[ nodiscard ]] inline auto pop_front()
-        -> Type
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        auto tmpValue{ ::std::move(m_deque.front()) };
-        m_deque.pop_front();
-        return tmpValue;
-    }
+    [[ nodiscard ]] auto pop_front()
+        -> Type;
 
-    inline void remove_front()
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        m_deque.pop_front();
-    }
+    void remove_front();
 
 
 
     // ------------------------------------------------------------------ back
 
-    [[ nodiscard ]] inline auto back()
-        -> Type&
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        return m_deque.back();
-    }
+    [[ nodiscard ]] auto back()
+        -> Type&;
 
-    inline void push_back(
+    void push_back(
         Type item
-    )
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        m_deque.emplace_back(::std::move(item));
-    }
+    );
 
-    [[ nodiscard ]] inline auto pop_back()
-        -> Type
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        auto tmpValue{ ::std::move(m_deque.back()) };
-        m_deque.pop_back();
-        return tmpValue;
-    }
+    [[ nodiscard ]] auto pop_back()
+        -> Type;
+
+    void remove_back();
 
 
 
     // ------------------------------------------------------------------ helpers
 
-    [[ nodiscard ]] inline auto empty()
-        -> bool
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        return m_deque.empty();
-    }
+    [[ nodiscard ]] auto empty()
+        -> bool;
 
-    [[ nodiscard ]] inline auto count()
-        -> bool
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        return m_deque.count();
-    }
+    [[ nodiscard ]] auto count()
+        -> bool;
 
-    inline void clear()
-    {
-        ::std::scoped_lock lock{ m_mutex };
-        m_deque.clear();
-    }
+    void clear();
 
+
+
+    // ------------------------------------------------------------------ blocking
+
+    void wait();
 
 
 
 private:
 
-    ::std::mutex m_mutex;
+    ::std::mutex m_mutexQueue;
     ::std::deque<Type> m_deque;
+
+    ::std::mutex m_mutexBlocker;
+    ::std::condition_variable m_blocker;
 
 };
 

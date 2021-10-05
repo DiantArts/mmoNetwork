@@ -3,6 +3,8 @@
 #include <Id.hpp>
 #include <Detail/Concepts.hpp>
 #include <Connection.hpp>
+#include <MessageType.hpp>
+#include <ANode.hpp>
 
 
 
@@ -12,147 +14,56 @@ namespace network {
 
 template <
     ::network::detail::IsEnum MessageType
-> class AServer {
-
-public:
-
-    using ClientConnectionPtr = ::std::shared_ptr<::network::Connection<MessageType>>;
-
+> class AServer
+    : public ::network::ANode<MessageType>
+{
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
-    AServer(
+    explicit AServer(
         const ::std::uint16_t port
-    )
-        : m_asioAcceptor{
-            m_asioContext,
-            ::boost::asio::ip::tcp::endpoint{ ::boost::asio::ip::tcp::v4(), port }
-        }
-    {
-        ::std::cout << "[SERVER] Ready to listen port " << port << ".\n";
-    }
+    );
 
-    virtual ~AServer()
-    {
-        this->stop();
-    }
+    virtual ~AServer() = 0;
 
 
 
     // ------------------------------------------------------------------ running
 
-    auto start()
-        -> bool
-    {
-        try {
-            this->startReceivingConnections();
+    [[ nodiscard ]] auto start()
+        -> bool;
 
-            // start the routine
-            m_threadContext = ::std::thread([this](){ m_asioContext.run(); });
+    void stop();
 
-        } catch (::std::exception& e) {
-            ::std::cerr << "[SERVER] Exception: " << e.what() << ".\n";
-            return false;
-        }
-        ::std::cout << "[SERVER] Started" << '\n';
-        return true;
-    }
-
-    void stop()
-    {
-        // stop everything running in parallele
-        m_asioContext.stop();
-        if(m_threadContext.joinable()) {
-            m_threadContext.join();
-        }
-
-        ::std::cout << "[SERVER] Stopped" << '\n';
-    }
-
-    auto isRunning()
-        -> bool
-    {
-        // TODO: isRunning implemetation
-        return true;
-    }
+    [[ nodiscard ]] auto isRunning()
+        -> bool;
 
 
 
-    // ------------------------------------------------------------------ in - async
+    // ------------------------------------------------------------------ async - in
 
-    void startReceivingConnections()
-    {
-        m_asioAcceptor.async_accept(
-            [this](
-                const boost::system::error_code& errorCode,
-                ::boost::asio::ip::tcp::socket socket
-            ) {
-                if (!errorCode) {
-                    ::std::cout << "[SERVER] New incomming connection: " << socket.remote_endpoint() << ".\n";
-                    auto newConnection{ ::std::make_shared<::network::Connection<MessageType>>(
-                        ::network::Connection<MessageType>::owner::server,
-                        m_asioContext,
-                        ::std::move(socket),
-                        m_messagesIn
-                    ) };
-                    if (this->onClientConnect(newConnection)) {
-                        newConnection->connectToClient(++m_idCounter);
-                        m_connections.push_back(::std::move(newConnection));
-                        ::std::cout << "[SERVER] Connection ["
-                            << m_connections.back()->getId() << "] approved.\n";
-                    } else {
-                        ::std::clog << "[SERVER] Connection denied.\n";
-                    }
-                } else {
-                    ::std::clog << "[SERVER] New connection error: " << errorCode.message() << ".\n";
-                }
-                this->startReceivingConnections();
-            }
-        );
-    }
+    void startReceivingConnections();
 
-    void update()
-    {
-        while (!m_messagesIn.empty()) {
-            auto message{ m_messagesIn.pop_front() };
-            this->onReceive(message, message.getRemote());
-        }
-    }
+    void pullIncommingMessage();
 
-    void update(
-        ::std::size_t numberOfMessages
-    )
-    {
-        for (::std::size_t i{ 0 }; i < numberOfMessages && !m_messagesIn.empty(); ++i) {
-            auto message{ m_messagesIn.pop_front() };
-            this->onReceive(message);
-        }
-    }
+    void pullIncommingMessages();
+
+    void blockingPullIncommingMessages();
 
 
 
-    // ------------------------------------------------------------------ out - async
+    // ------------------------------------------------------------------ async - out
 
     void send(
         const ::network::Message<MessageType>& message,
-        AServer<MessageType>::ClientConnectionPtr client
-    )
-    {
-        if (client->isConnected()) {
-            this->onSend(message, client);
-            client->send(message);
-        } else {
-            this->onClientDisconnect(client);
-            client.reset();
-            m_connections.resize(m_connections.size() - ::std::ranges::remove(m_connections, nullptr).size());
-        }
-    }
+        ::std::shared_ptr<::network::Connection<MessageType>> client
+    );
 
     void send(
         const ::network::Message<MessageType>& message,
-        ::std::same_as<AServer<MessageType>::ClientConnectionPtr> auto... clients
+        ::std::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
         auto invalidClientDetected{ false };
@@ -162,7 +73,7 @@ public:
                 this->onSend(message, client);
                 client->send(message);
             } else {
-                this->onClientDisconnect(client);
+                this->onDisconnect(client);
                 client.reset();
                 invalidClientDetected = true;
             }
@@ -175,7 +86,7 @@ public:
 
     void sendToAllClient(
         const ::network::Message<MessageType>& message,
-        ::std::same_as<AServer<MessageType>::ClientConnectionPtr> auto... ignoredClients
+        ::std::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
     )
     {
         auto invalidClientDetected{ false };
@@ -187,7 +98,7 @@ public:
                     client->send(message);
                 }
             } else {
-                this->onClientDisconnect(client);
+                this->onDisconnect(client);
                 client.reset();
                 invalidClientDetected = true;
             }
@@ -200,55 +111,28 @@ public:
 
 
 
-protected:
-
     // ------------------------------------------------------------------ user methods
 
     // refuses the connection by returning false
     virtual auto onClientConnect(
-        AServer<MessageType>::ClientConnectionPtr client
-    ) -> bool
-    {
-        ::network::Message<MessageType> message{ MessageType::ConnectionAccepted };
-        client->send(message);
-        return true;
-    }
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ) -> bool;
 
-    virtual void onClientDisconnect(
-        AServer<MessageType>::ClientConnectionPtr client
-    )
-    {
-        ::std::cout << "[SERVER:" << client->getId() << "] Disconnected, client removed.\n";
-    }
+    // refuses the identification by returning false
+    [[ nodiscard ]] virtual auto onClientIdentificate(
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ) -> bool;
 
-    // after receiving
-    virtual void onReceive(
-        const ::network::Message<MessageType>& message,
-        AServer<MessageType>::ClientConnectionPtr client
-    )
-    {}
-
-    // before sending
-    virtual void onSend(
-        const ::network::Message<MessageType>& message,
-        AServer<MessageType>::ClientConnectionPtr client
-    )
-    {}
 
 
 
 private:
 
-    // context running on a seperate thread
-    ::boost::asio::io_context m_asioContext;
-    ::std::thread m_threadContext;
-
     // hardware connection to the server
     ::boost::asio::ip::tcp::acceptor m_asioAcceptor;
 
-    ::network::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
 
-    ::std::deque<AServer<MessageType>::ClientConnectionPtr> m_connections;
+    ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_connections;
 
     ::network::Id m_idCounter{ 1 };
 

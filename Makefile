@@ -61,7 +61,7 @@ CXX_CPPFLAGS	:=
 LIBLOCATION		:=
 
 ## -l
-LIBBIN			:=	boost_system boost_thread pthread
+LIBBIN			:=	boost_system boost_thread pthread sodium
 
 
 # ============================================================================= Mode debug
@@ -286,7 +286,7 @@ $(NAME1)$(MODE_EXT): compilation1 | libraries externs $(BINDIR)
 $(NAME2)$(MODE_EXT): compilation2 | libraries externs $(BINDIR)
 	$(CXX) $(OUTPUT_OPTION) $(CPP_OBJ2) $(CPPM_OBJ) $(LDFLAGS) $(LDLIBS)
 
-$(TEST_NAME)$(MODE_EXT): compilation | libraries externs $(BINDIR)
+$(TEST_NAME)$(MODE_EXT): compilation1 compilation2 | libraries externs $(BINDIR)
 	$(CXX) $(OUTPUT_OPTION) $(CPP_OBJ) $(CPPM_OBJ) $(LDFLAGS) $(LDLIBS)
 
 force :;

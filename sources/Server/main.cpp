@@ -12,10 +12,12 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
         ::ServerExample server{ 60000 };
-        server.start();
+        if (!server.start()) {
+            return EXIT_FAILURE;
+        }
+
         while (server.isRunning()) {
-            ::std::this_thread::sleep_for(50ms);
-            server.update();
+            server.blockingPullIncommingMessages();
         }
         return EXIT_SUCCESS;
 
