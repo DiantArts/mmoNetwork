@@ -213,7 +213,6 @@ template <
     );
 }
 
-// TODO: client memory error
 template <
     ::network::detail::IsEnum MessageType
 > void ::network::Connection<MessageType>::writeHeader()

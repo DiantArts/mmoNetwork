@@ -18,7 +18,7 @@ public:
 
     struct Header {
         MessageType packetType{};
-        ::std::uint16_t bodySize{ 0 };
+        ::std::uint32_t bodySize{ 0 };
     };
 
 

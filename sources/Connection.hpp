@@ -92,7 +92,6 @@ public:
         ::network::Message<MessageType> message
     );
 
-    // TODO: client memory error
     void writeHeader();
 
     void writeBody();
@@ -109,7 +108,6 @@ public:
 private:
 
     // ------------------------------------------------------------------ async - securityProtocol
-    // TODO: encrypt handshake
     // Identification (Client claiming to identify as a client of the protocol):
     //     1. Both send the public key
     //     2. The server sends an handshake encrypted

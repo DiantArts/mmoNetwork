@@ -44,7 +44,6 @@ public:
 
     // ------------------------------------------------------------------ Encrypt
 
-    // TODO: encrypt implementation
     [[ nodiscard ]] auto encrypt(
         const void* rawMemory,
         ::std::size_t size
@@ -62,7 +61,6 @@ public:
 
     // ------------------------------------------------------------------ Decrypt
 
-    // TODO: decrypt implementation
     [[ nodiscard ]] auto decrypt(
         const void* rawMemory,
         ::std::size_t size

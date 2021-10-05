@@ -14,7 +14,8 @@ template class ::network::Message<::network::MessageType>;
 
 template <
     ::network::detail::IsEnum MessageType
-> ::network::Message<MessageType>::Message() = default;
+> ::network::Message<MessageType>::Message()
+{}
 
 template <
     ::network::detail::IsEnum MessageType
