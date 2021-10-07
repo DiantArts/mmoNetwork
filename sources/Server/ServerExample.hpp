@@ -39,36 +39,29 @@ private:
         return true;
     }
 
-    virtual void onDisconnect(
-        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
-    ) override
-    {}
-
     // after receiving
-    virtual void onReceive(
-        const ::network::Message<::network::MessageType>& message,
+    virtual void onTcpReceive(
+        ::network::Message<::network::MessageType>& message,
         ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
-        case ::network::MessageType::MessageAll: {
+        case ::network::MessageType::messageAll: {
             ::std::cout << "[" << connection->getId() << "]: Message All\n";
-            ::network::Message<::network::MessageType> newMessage{ ::network::MessageType::Message };
-            newMessage << connection->getId();
-            this->sendToAllClient(newMessage, connection);
+            this->sendToAllClients(
+                ::network::Message{
+                    ::network::MessageType::message,
+                    ::network::TransmissionProtocol::tcp,
+                    connection->getId()
+                },
+                connection
+            );
             break;
-        } case ::network::MessageType::Ping:
+        } case ::network::MessageType::ping:
         default:
-            connection->send(message);
+            connection->tcpSend(message);
             break;
         }
     }
-
-    // before sending
-    virtual void onSend(
-        const ::network::Message<::network::MessageType>& message,
-        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
-    ) override
-    {}
 
 };

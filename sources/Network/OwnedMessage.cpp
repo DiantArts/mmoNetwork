@@ -15,8 +15,8 @@ template class ::network::OwnedMessage<::network::MessageType>;
 template <
     ::detail::IsEnum MessageType
 > ::network::OwnedMessage<MessageType>::OwnedMessage(
-    ::std::shared_ptr<::network::Connection<MessageType>> remote,
-    ::network::Message<MessageType> message
+    ::network::Message<MessageType> message,
+    ::std::shared_ptr<::network::Connection<MessageType>> remote
 )
     : ::network::Message<MessageType>{ ::std::move(message) }
     , m_remote{ remote }

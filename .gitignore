@@ -7,6 +7,7 @@
 *.o
 *.d
 *.hpp.gch
+*.log.*
 #*#
 *~
 binaries*

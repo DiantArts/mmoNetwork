@@ -40,9 +40,9 @@ PCMEXT			:=	.pcm
 PCHEXT			:=	.gch
 
 ## wflags
-COMMON_WFLAGS	:=	pedantic all extra
+COMMON_WFLAGS	:=	pedantic all extra missing-field-initializers
 C_WFLAGS		:=	
-CPP_WFLAGS		:=	no-volatile no-address no-nonnull-compare no-unused-variable no-unused-parameter no-class-memaccess
+CPP_WFLAGS		:=	no-volatile no-address no-nonnull-compare no-unused-variable no-unused-parameter no-class-memaccess no-pointer-arith
 CPPM_WFLAGS		:=
 
 ## flags
@@ -428,11 +428,11 @@ debug2 : linkage2
 
 auto_valgrind : linkage1
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_valgrind $(ARGV)\n"
-	valgrind --track-origins=yes ./$(NAME1)$(MODE_EXT) $(ARGV1)
+	valgrind --track-origins=yes --log-file="clientValgrind.log" ./$(NAME1)$(MODE_EXT) $(ARGV1) && cat clientValgrind.log
 
 auto_valgrind2 : linkage2
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_valgrind $(ARGV)\n"
-	valgrind --track-origins=yes ./$(NAME2)$(MODE_EXT) $(ARGV2)
+	valgrind --track-origins=yes --log-file="serverValgrind.log" ./$(NAME2)$(MODE_EXT) $(ARGV2) && cat serverValgrind.log
 
 auto_gdb : linkage1
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_gdb $(ARGV)\n"

@@ -21,8 +21,8 @@ public:
     // ------------------------------------------------------------------ *structors
 
     OwnedMessage(
-        ::std::shared_ptr<::network::Connection<MessageType>> remote,
-        ::network::Message<MessageType> message
+        ::network::Message<MessageType> message,
+        ::std::shared_ptr<::network::Connection<MessageType>> remote
     );
 
     ~OwnedMessage();

@@ -71,20 +71,40 @@ public:
 
     // ------------------------------------------------------------------ user methods
 
-    // before the actual disconnection
+    // handle the disconnection
     virtual void onDisconnect(
         ::std::shared_ptr<::network::Connection<MessageType>> connection
     );
 
+
+
     // after receiving
-    virtual void onReceive(
-        const ::network::Message<MessageType>& message,
+    virtual void onTcpReceive(
+        ::network::Message<MessageType>& message,
         ::std::shared_ptr<::network::Connection<MessageType>> connection
     );
 
+    virtual void onUdpReceive(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    );
+
+    // returns true meaning the message is already handled
+    virtual auto defaultReceiveBehaviour(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ) -> bool = 0;
+
+
+
     // before sending
-    virtual void onSend(
-        const ::network::Message<MessageType>& message,
+    virtual void onTcpSend(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    );
+
+    virtual void onUdpSend(
+        ::network::Message<MessageType>& message,
         ::std::shared_ptr<::network::Connection<MessageType>> connection
     );
 

@@ -38,33 +38,68 @@ public:
 
     void disconnect();
 
+    void stop();
+
     [[ nodiscard ]] auto isConnected()
         -> bool;
 
 
 
-    // ------------------------------------------------------------------ async - out
+    // ------------------------------------------------------------------ async - tcpOut
 
-    void send(
+    void tcpSend(
         ::network::Message<MessageType>& message
     );
 
-    void send(
+    void tcpSend(
         ::network::Message<MessageType>&& message
     );
 
-    // construct and send
-    void send(
-        ::detail::IsEnum auto&& messageType,
+    // construct and tcpSend
+    void tcpSend(
+        MessageType messageType,
         auto&&... args
     )
     {
-        m_connection->send(
+        m_connection->tcpSend(
             ::std::forward<decltype(messageType)>(messageType),
             ::std::forward<decltype(args)>(args)...
         );
     }
 
+
+
+    // ------------------------------------------------------------------ async - udpOut
+
+    void udpSend(
+        ::network::Message<MessageType>& message
+    );
+
+    void udpSend(
+        ::network::Message<MessageType>&& message
+    );
+
+    // construct and udpSend
+    void udpSend(
+        MessageType messageType,
+        auto&&... args
+    )
+    {
+        m_connection->udpSend(
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        );
+    }
+
+
+
+    // ------------------------------------------------------------------ receive behaviour
+
+    virtual auto defaultReceiveBehaviour(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ) -> bool
+        override final;
 
 
 private:

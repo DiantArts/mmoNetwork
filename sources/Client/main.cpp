@@ -35,6 +35,7 @@ int main(int argc, char **argv)
                 // this->send<::packet::Text>(str);
             }
         }
+        client.stop();
         thread.join();
 
         return EXIT_SUCCESS;

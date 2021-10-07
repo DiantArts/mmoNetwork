@@ -23,6 +23,7 @@ template <
 > ::network::AClient<MessageType>::~AClient()
 {
     this->disconnect();
+    this->stop();
 }
 
 
@@ -38,8 +39,9 @@ template <
 {
     try {
         m_connection = ::std::make_shared<::network::Connection<MessageType>>(
+            *this,
             ::boost::asio::ip::tcp::socket(this->getAsioContext()),
-            *this
+            ::boost::asio::ip::udp::socket(this->getAsioContext())
         );
         m_connection->connectToServer(host, port);
         this->getThreadContext() = ::std::thread([this](){ this->getAsioContext().run(); });
@@ -59,17 +61,20 @@ template <
 
         m_connection->disconnect();
 
-        // stop everything running in parallele
-        this->getAsioContext().stop();
-        if(this->getThreadContext().joinable()) {
-            this->getThreadContext().join();
-        }
-
         // destroy the connection
         m_connection.reset();
-        this->getIncommingMessages().notify();
-
         ::std::cout << "Disconnected" << '\n';
+    }
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::AClient<MessageType>::stop()
+{
+    this->getIncommingMessages().notify();
+    this->getAsioContext().stop();
+    if(this->getThreadContext().joinable()) {
+        this->getThreadContext().join();
     }
 }
 
@@ -83,24 +88,71 @@ template <
 
 
 
-// ------------------------------------------------------------------ async - out
+// ------------------------------------------------------------------ async - tcpOut
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::AClient<MessageType>::send(
+> void ::network::AClient<MessageType>::tcpSend(
     ::network::Message<MessageType>& message
 )
 {
-    this->onSend(message, m_connection);
-    m_connection->send(message);
+    this->onTcpSend(message, m_connection);
+    m_connection->tcpSend(message);
 }
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::AClient<MessageType>::send(
+> void ::network::AClient<MessageType>::tcpSend(
     ::network::Message<MessageType>&& message
 )
 {
-    this->onSend(message, m_connection);
-    m_connection->send(::std::move(message));
+    this->onTcpSend(message, m_connection);
+    m_connection->tcpSend(::std::move(message));
+}
+
+
+
+// ------------------------------------------------------------------ async - udpOut
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::AClient<MessageType>::udpSend(
+    ::network::Message<MessageType>& message
+)
+{
+    this->onTcpSend(message, m_connection);
+    m_connection->udpSend(message);
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::AClient<MessageType>::udpSend(
+    ::network::Message<MessageType>&& message
+)
+{
+    this->onTcpSend(message, m_connection);
+    m_connection->udpSend(::std::move(message));
+}
+
+
+
+// ------------------------------------------------------------------ receive behaviour
+
+template <
+    ::detail::IsEnum MessageType
+> auto ::network::AClient<MessageType>::defaultReceiveBehaviour(
+    ::network::Message<MessageType>& message,
+    ::std::shared_ptr<::network::Connection<MessageType>> connection
+) -> bool
+{
+    switch (message.getType()) {
+    case MessageType::udpPort:
+        ::std::uint16_t udpPort;
+        message >> udpPort;
+        m_connection->targetServerUdpPort(udpPort);
+        break;
+    default:
+        return false;
+    }
+    return true;
 }

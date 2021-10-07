@@ -7,7 +7,7 @@
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
 
-namespace network{ template <::detail::IsEnum MessageType> class ANode; }
+namespace network { template <::detail::IsEnum MessageType> class ANode; }
 
 
 
@@ -26,8 +26,9 @@ public:
     // ------------------------------------------------------------------ *structors
 
     Connection(
-        ::boost::asio::ip::tcp::socket socket,
-        ::network::ANode<MessageType>& connectionOwner
+        ::network::ANode<MessageType>& owner,
+        ::boost::asio::ip::tcp::socket tcpSocket,
+        ::boost::asio::ip::udp::socket udpSocket
     );
 
     ~Connection();
@@ -37,15 +38,26 @@ public:
 
     // ------------------------------------------------------------------ async - connection
 
+    // server
     auto connectToClient(
         ::detail::Id id
     ) -> bool;
 
+
+
+    // client
     void connectToServer(
         const ::std::string& host,
-        const ::std::uint16_t port
+        ::std::uint16_t port
     );
 
+    void targetServerUdpPort(
+        ::std::uint16_t port
+    );
+
+
+
+    // common
     void disconnect();
 
     auto isConnected() const
@@ -54,47 +66,102 @@ public:
 
 
 
-    // ------------------------------------------------------------------ async - in
+    // ------------------------------------------------------------------ async - tcpIn
 
-    void readHeader();
+    void tcpReadHeader();
 
-    void readBody();
+    void tcpReadBody();
 
-    void transferBufferToInQueue();
+    void tcpTransferBufferToInQueue();
 
 
 
-    // ------------------------------------------------------------------ async - out
+    // ------------------------------------------------------------------ async - tcpOut
 
-    void send(
-        ::detail::IsEnum auto&& messageType,
+    void tcpSend(
+        MessageType messageType,
         auto&&... args
     )
     {
         ::network::Message message{
             ::std::forward<decltype(messageType)>(messageType),
+            ::network::TransmissionProtocol::tcp,
             ::std::forward<decltype(args)>(args)...
         };
         ::boost::asio::post(
             m_owner.getAsioContext(),
             [this, message]()
             {
-                auto wasOutQueueEmpty{ m_messagesOut.empty() };
-                m_messagesOut.push_back(::std::move(message));
+                auto wasOutQueueEmpty{ m_tcpMessagesOut.empty() };
+                m_tcpMessagesOut.push_back(::std::move(message));
                 if (wasOutQueueEmpty) {
-                    this->writeHeader();
+                    this->tcpWriteHeader();
                 }
             }
         );
     }
 
-    void send(
+    void tcpSend(
         ::network::Message<MessageType> message
     );
 
-    void writeHeader();
+    void tcpWriteHeader();
 
-    void writeBody();
+    void tcpWriteBody();
+
+
+
+
+    // ------------------------------------------------------------------ async - udpIn
+
+    void udpReadHeader(
+        ::std::size_t bytesAlreadyRead = 0
+    );
+
+    void udpReadBody(
+        ::std::size_t bytesAlreadyRead = 0
+    );
+
+    void udpTransferBufferToInQueue();
+
+
+
+    // ------------------------------------------------------------------ async - udpOut
+
+    void udpSend(
+        MessageType messageType,
+        auto&&... args
+    )
+    {
+        ::network::Message message{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::network::TransmissionProtocol::udp,
+            ::std::forward<decltype(args)>(args)...
+        };
+        ::boost::asio::post(
+            m_owner.getAsioContext(),
+            [this, message]()
+            {
+                auto wasOutQueueEmpty{ m_udpMessagesOut.empty() };
+                m_udpMessagesOut.push_back(::std::move(message));
+                if (wasOutQueueEmpty) {
+                    this->udpWriteHeader();
+                }
+            }
+        );
+    }
+
+    void udpSend(
+        ::network::Message<MessageType> message
+    );
+
+    void udpWriteHeader(
+        ::std::size_t bytesAlreadySent = 0
+    );
+
+    void udpWriteBody(
+        ::std::size_t bytesAlreadySent = 0
+    );
 
 
 
@@ -169,14 +236,15 @@ private:
 
     ::network::ANode<MessageType>& m_owner;
 
-    // context shared by the whole asio instance
-    ::boost::asio::ip::tcp::socket m_socket;
+    ::boost::asio::ip::tcp::socket m_tcpSocket;
+    ::boost::asio::ip::udp::socket m_udpSocket;
 
     // in
     ::network::Message<MessageType> m_bufferIn;
 
     // out
-    ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
+    ::detail::Queue<::network::Message<MessageType>> m_tcpMessagesOut;
+    ::detail::Queue<::network::Message<MessageType>> m_udpMessagesOut;
 
     // security
     ::security::Cipher m_cipher;

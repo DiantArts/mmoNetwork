@@ -17,12 +17,12 @@ public:
 
     void pingServer()
     {
-        this->send(::network::MessageType::Ping, ::std::chrono::system_clock::now());
+        this->tcpSend(::network::MessageType::ping, ::std::chrono::system_clock::now());
     }
 
     void messageServer()
     {
-        this->send(::network::MessageType::MessageAll);
+        this->tcpSend(::network::MessageType::messageAll);
     }
 
     void handleMessagesIn()
@@ -30,10 +30,10 @@ public:
         while (!this->getIncommingMessages().empty()) {
             auto message{ this->getIncommingMessages().pop_front() };
             switch (message.getType()) {
-            case ::network::MessageType::Message: {
+            case ::network::MessageType::message: {
                 ::std::cout << "message from [" << message.extract<::detail::Id>() << "]" << ::std::endl;
                 break;
-            } case ::network::MessageType::Ping: {
+            } case ::network::MessageType::ping: {
                 auto timeNow{ ::std::chrono::system_clock::now() };
                 decltype(timeNow) timeThen;
                 message >> timeThen;

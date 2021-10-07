@@ -18,11 +18,13 @@ template class ::network::Connection<::network::MessageType>;
 template <
     ::detail::IsEnum MessageType
 > ::network::Connection<MessageType>::Connection(
-    ::boost::asio::ip::tcp::socket socket,
-    ::network::ANode<MessageType>& connectionOwner
+    ::network::ANode<MessageType>& owner,
+    ::boost::asio::ip::tcp::socket tcpSocket,
+    ::boost::asio::ip::udp::socket udpSocket
 )
-    : m_owner{ connectionOwner }
-    , m_socket{ ::std::move(socket) }
+    : m_owner{ owner }
+    , m_tcpSocket{ ::std::move(tcpSocket) }
+    , m_udpSocket{ ::std::move(udpSocket) }
 {}
 
 
@@ -42,7 +44,7 @@ template <
     -> bool
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
-        if (m_socket.is_open()) {
+        if (m_tcpSocket.is_open()) {
             if (
                 dynamic_cast<::network::AServer<MessageType>&>(m_owner)
                     .onClientConnect(this->shared_from_this())
@@ -56,14 +58,16 @@ template <
                 return false;
             }
         } else {
-            ::std::cerr << "Invalid socket.\n";
+            ::std::cerr << "[ERROR:NewConnection] Invalid socket.\n";
             return false;
         }
     } else {
-        ::std::cerr << "A client cannot connect to another client.\n";
+        ::std::cerr << "[ERROR:Connection] A client cannot connect to another client.\n";
         return false;
     }
 }
+
+
 
 template <
     ::detail::IsEnum MessageType
@@ -73,21 +77,16 @@ template <
 )
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::client) {
-        // resolve host/ip addr into a physical addr
-        ::boost::asio::ip::tcp::resolver resolver{ m_owner.getAsioContext() };
-        auto endpoints = resolver.resolve(host, ::std::to_string(port));
-
-        ::boost::asio::async_connect(
-            m_socket,
-            endpoints,
+        m_tcpSocket.async_connect(
+            ::boost::asio::ip::tcp::endpoint{ ::boost::asio::ip::address::from_string(host), port },
             [this](
-                const boost::system::error_code& errorCode,
-                const ::boost::asio::ip::tcp::endpoint
+                const boost::system::error_code& errorCode
             ) {
-                if (!errorCode) {
-                    this->identificate();
+                if (errorCode) {
+                    ::std::cerr << "[ERROR:NewConnection] Client failed to connect to the tcp Server.\n";
+                    this->disconnect();
                 } else {
-                    ::std::cerr << "Client failed to connect to the Server.\n";
+                    this->identificate();
                 }
             }
         );
@@ -98,18 +97,43 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::disconnect()
+> void ::network::Connection<MessageType>::targetServerUdpPort(
+    const ::std::uint16_t port
+)
 {
-    if (this->isConnected()) {
-        ::boost::asio::post(
-            m_owner.getAsioContext(),
-            [this]()
-            {
-                m_socket.close();
-                m_id = 0;
+    if (m_owner.getType() == ::network::ANode<MessageType>::Type::client) {
+        m_udpSocket.async_connect(
+            ::boost::asio::ip::udp::endpoint{ m_tcpSocket.remote_endpoint().address(), port },
+            [this](
+                const boost::system::error_code& errorCode
+            ) {
+                if (errorCode) {
+                    ::std::cerr << "[ERROR:NewConnection] Client failed to connect to the tcp Server.\n";
+                    this->disconnect();
+                } else {
+                    this->identificate();
+                }
             }
         );
+    } else {
+        throw ::std::runtime_error("A server cannot target another server udp port.\n");
     }
+}
+
+
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::disconnect()
+{
+    ::boost::asio::post(
+        m_owner.getAsioContext(),
+        [this]()
+        {
+            m_tcpSocket.close();
+            m_owner.onDisconnect(this->shared_from_this());
+        }
+    );
 }
 
 template <
@@ -117,37 +141,37 @@ template <
 > auto ::network::Connection<MessageType>::isConnected() const
     -> bool
 {
-    return m_socket.is_open();
+    return m_tcpSocket.is_open();
 }
 
 
 
 
-// ------------------------------------------------------------------ async - in
+// ------------------------------------------------------------------ async - tcpIn
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::readHeader()
+> void ::network::Connection<MessageType>::tcpReadHeader()
 {
     ::boost::asio::async_read(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getHeaderSize()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                // m_bufferIn.displayHeader("<-");
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read header failed: " << errorCode.message() << ".\n";
+                if (errorCode == ::boost::asio::error::eof) {
+                }
+                this->disconnect();
+            } else {
                 if (!m_bufferIn.isBodyEmpty()) {
                     m_bufferIn.updateBodySize();
-                    this->readBody();
+                    this->tcpReadBody();
                 } else {
-                    this->transferBufferToInQueue();
+                    this->tcpTransferBufferToInQueue();
                 }
-            } else {
-                ::std::cerr << "[" << m_id << "] Read header failed: "
-                    << errorCode.message() << ".\n";
-                this->disconnect();
             }
         }
     );
@@ -155,22 +179,20 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::readBody()
+> void ::network::Connection<MessageType>::tcpReadBody()
 {
     ::boost::asio::async_read(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                // m_bufferIn.displayBody("<-");
-                this->transferBufferToInQueue();
-            } else {
-                ::std::cerr << "[" << m_id << "] Read body failed: "
-                    << errorCode.message() << ".\n";
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read body failed: " << errorCode.message() << ".\n";
                 this->disconnect();
+            } else {
+                this->tcpTransferBufferToInQueue();
             }
         }
     );
@@ -178,25 +200,25 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::transferBufferToInQueue()
+> void ::network::Connection<MessageType>::tcpTransferBufferToInQueue()
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
         m_owner.pushIncommingMessage(
-            network::OwnedMessage<MessageType>{ this->shared_from_this(), m_bufferIn }
+            network::OwnedMessage<MessageType>{ m_bufferIn, this->shared_from_this() }
         );
     } else {
-        m_owner.pushIncommingMessage(network::OwnedMessage<MessageType>{ nullptr, m_bufferIn });
+        m_owner.pushIncommingMessage(network::OwnedMessage<MessageType>{ m_bufferIn, nullptr });
     }
-    this->readHeader();
+    this->tcpReadHeader();
 }
 
 
 
-// ------------------------------------------------------------------ async - out
+// ------------------------------------------------------------------ async - tcpOut
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::send(
+> void ::network::Connection<MessageType>::tcpSend(
     ::network::Message<MessageType> message
 )
 {
@@ -204,10 +226,10 @@ template <
         m_owner.getAsioContext(),
         [this, message]()
         {
-            auto wasOutQueueEmpty{ m_messagesOut.empty() };
-            m_messagesOut.push_back(::std::move(message));
+            auto wasOutQueueEmpty{ m_tcpMessagesOut.empty() };
+            m_tcpMessagesOut.push_back(::std::move(message));
             if (wasOutQueueEmpty) {
-                this->writeHeader();
+                this->tcpWriteHeader();
             }
         }
     );
@@ -215,29 +237,30 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::writeHeader()
+> void ::network::Connection<MessageType>::tcpWriteHeader()
 {
     ::boost::asio::async_write(
-        m_socket,
-        ::boost::asio::buffer(m_messagesOut.front().getHeaderAddr(), m_messagesOut.front().getHeaderSize()),
+        m_tcpSocket,
+        ::boost::asio::buffer(
+            m_tcpMessagesOut.front().getHeaderAddr(),
+            m_tcpMessagesOut.front().getHeaderSize()
+        ),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                // m_messagesOut.front().displayHeader("->");
-                if (!m_messagesOut.front().isBodyEmpty()) {
-                    this->writeBody();
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Write header failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else {
+                if (!m_tcpMessagesOut.front().isBodyEmpty()) {
+                    this->tcpWriteBody();
                 } else {
-                    m_messagesOut.remove_front();
-                    if (!m_messagesOut.empty()) {
-                        this->writeHeader();
+                    m_tcpMessagesOut.remove_front();
+                    if (!m_tcpMessagesOut.empty()) {
+                        this->tcpWriteHeader();
                     }
                 }
-            } else {
-                ::std::cerr << "[" << m_id << "] Write header failed: "
-                    << errorCode.message() << ".\n";
-                this->disconnect();
             }
         }
     );
@@ -245,25 +268,191 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> void ::network::Connection<MessageType>::writeBody()
+> void ::network::Connection<MessageType>::tcpWriteBody()
 {
     ::boost::asio::async_write(
-        m_socket,
-        ::boost::asio::buffer(m_messagesOut.front().getBodyAddr(), m_messagesOut.front().getBodySize()),
+        m_tcpSocket,
+        ::boost::asio::buffer(
+            m_tcpMessagesOut.front().getBodyAddr(),
+            m_tcpMessagesOut.front().getBodySize()
+        ),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                // m_messagesOut.front().displayBody("->");
-                m_messagesOut.remove_front();
-                if (!m_messagesOut.empty()) {
-                    this->writeHeader();
-                }
-            } else {
-                ::std::cerr << "[" << m_id << "] Write body failed: "
-                    << errorCode.message() << ".\n";
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Write body failed: " << errorCode.message() << ".\n";
                 this->disconnect();
+            } else {
+                m_tcpMessagesOut.remove_front();
+                if (!m_tcpMessagesOut.empty()) {
+                    this->tcpWriteHeader();
+                }
+            }
+        }
+    );
+}
+
+
+
+
+// ------------------------------------------------------------------ async - udpIn
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpReadHeader(
+    ::std::size_t bytesAlreadyRead /* = 0 */
+)
+{
+    m_udpSocket.async_receive(
+        ::boost::asio::buffer(
+            m_bufferIn.getHeaderAddr() + bytesAlreadyRead,
+            m_bufferIn.getHeaderSize() - bytesAlreadyRead
+        ),
+        [this, bytesAlreadyRead](
+            const boost::system::error_code& errorCode,
+            const ::std::size_t length
+        ) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read header failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else if (bytesAlreadyRead + length < m_bufferIn.getHeaderSize()) {
+                this->udpReadHeader(bytesAlreadyRead + length);
+            } else {
+                if (!m_bufferIn.isBodyEmpty()) {
+                    m_bufferIn.updateBodySize();
+                    this->udpReadBody();
+                } else {
+                    this->udpTransferBufferToInQueue();
+                }
+            }
+        }
+    );
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpReadBody(
+    ::std::size_t bytesAlreadyRead /* = 0 */
+)
+{
+    m_udpSocket.async_receive(
+        ::boost::asio::buffer(
+            m_bufferIn.getBodyAddr() + bytesAlreadyRead,
+            m_bufferIn.getBodySize() - bytesAlreadyRead
+        ),
+        [this, bytesAlreadyRead](
+            const boost::system::error_code& errorCode,
+            const ::std::size_t length
+        ) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read body failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else if (bytesAlreadyRead + length < m_bufferIn.getBodySize()) {
+                this->udpReadBody(bytesAlreadyRead + length);
+            } else {
+                this->udpTransferBufferToInQueue();
+            }
+        }
+    );
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpTransferBufferToInQueue()
+{
+    if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
+        m_owner.pushIncommingMessage(
+            network::OwnedMessage<MessageType>{ m_bufferIn, this->shared_from_this() }
+        );
+    } else {
+        m_owner.pushIncommingMessage(network::OwnedMessage<MessageType>{ m_bufferIn, nullptr });
+    }
+    this->udpReadHeader();
+}
+
+
+
+// ------------------------------------------------------------------ async - udpOut
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpSend(
+    ::network::Message<MessageType> message
+)
+{
+    ::boost::asio::post(
+        m_owner.getAsioContext(),
+        [this, message]()
+        {
+            auto wasOutQueueEmpty{ m_udpMessagesOut.empty() };
+            m_udpMessagesOut.push_back(::std::move(message));
+            if (wasOutQueueEmpty) {
+                this->udpWriteHeader();
+            }
+        }
+    );
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpWriteHeader(
+    ::std::size_t bytesAlreadySent /* = 0 */
+)
+{
+    m_udpSocket.async_send(
+        ::boost::asio::buffer(
+            m_udpMessagesOut.front().getHeaderAddr() + bytesAlreadySent,
+            m_udpMessagesOut.front().getHeaderSize() - bytesAlreadySent
+        ),
+        [this, bytesAlreadySent](
+            const boost::system::error_code& errorCode,
+            const ::std::size_t length
+        ) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Write header failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else if (bytesAlreadySent + length < m_udpMessagesOut.front().getHeaderSize()) {
+                this->udpWriteHeader(bytesAlreadySent + length);
+            } else {
+                if (!m_udpMessagesOut.front().isBodyEmpty()) {
+                    this->udpWriteBody();
+                } else {
+                    m_udpMessagesOut.remove_front();
+                    if (!m_udpMessagesOut.empty()) {
+                        this->udpWriteHeader();
+                    }
+                }
+            }
+        }
+    );
+}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::Connection<MessageType>::udpWriteBody(
+    ::std::size_t bytesAlreadySent /* = 0 */
+)
+{
+    m_udpSocket.async_send(
+        ::boost::asio::buffer(
+            m_udpMessagesOut.front().getBodyAddr() + bytesAlreadySent,
+            m_udpMessagesOut.front().getBodySize() - bytesAlreadySent
+        ),
+        [this, bytesAlreadySent](
+            const boost::system::error_code& errorCode,
+            const ::std::size_t length
+        ) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Write body failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else if (bytesAlreadySent + length < m_udpMessagesOut.front().getBodySize()) {
+                this->udpWriteBody(bytesAlreadySent + length);
+            } else {
+                m_udpMessagesOut.remove_front();
+                if (!m_udpMessagesOut.empty()) {
+                    this->udpWriteHeader();
+                }
             }
         }
     );
@@ -275,7 +464,7 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> [[ nodiscard ]] auto ::network::Connection<MessageType>::getId() const
+> auto ::network::Connection<MessageType>::getId() const
     -> ::detail::Id
 {
     return m_id;
@@ -300,14 +489,14 @@ template <
 > void ::network::Connection<MessageType>::sendPublicKey()
 {
     ::boost::asio::async_write(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(m_cipher.getPublicKeyAddr(), m_cipher.getPublicKeySize()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                ::std::cerr << "[" << m_id << "] Write header failed: " << errorCode.message() << ".\n";
+                ::std::cerr << "[ERROR:" << m_id << "] Write header failed: " << errorCode.message() << ".\n";
                 this->disconnect();
             }
         }
@@ -319,13 +508,16 @@ template <
 > void ::network::Connection<MessageType>::readPublicKey()
 {
     ::boost::asio::async_read(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read public key failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else {
                 if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
                     return this->serverHandshake();
                 } else {
@@ -333,9 +525,6 @@ template <
                 }
                 // no return means error
                 m_owner.onIdentificationDenial(this->shared_from_this());
-                this->disconnect();
-            } else {
-                ::std::cerr << "[" << m_id << "] Read public key failed: " << errorCode.message() << ".\n";
                 this->disconnect();
             }
         }
@@ -365,14 +554,14 @@ template <
 )
 {
     ::boost::asio::async_write(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(encryptedHandshakeBaseValue.data(), encryptedHandshakeBaseValue.size()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                ::std::cerr << "[" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
+                ::std::cerr << "[ERROR:" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
                 this->disconnect();
             }
         }
@@ -390,7 +579,7 @@ template <
 )
 {
     ::boost::asio::async_read(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(handshakeReceivedPtr->data(), handshakeReceivedPtr->size()),
         [
             this,
@@ -400,7 +589,10 @@ template <
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
+                this->disconnect();
+            } else {
                 auto decrypted{
                     m_cipher.decrypt(handshakeReceivedPtr->data(), handshakeReceivedPtr->size())
                 };
@@ -408,24 +600,25 @@ template <
                     *reinterpret_cast<::std::uint64_t*>(decrypted.data()) ==
                     m_cipher.scramble(handshakeBaseValue)
                 ) {
-                    if (
-                        dynamic_cast<::network::AServer<MessageType>&>(m_owner)
-                            .onClientIdentificate(this->shared_from_this())
-                    ) {
+                    auto& server{ dynamic_cast<::network::AServer<MessageType>&>(m_owner) };
+                    if (server.onClientIdentificate(this->shared_from_this())) {
                         ::std::cout << "[" << m_id << "] Identificated successfully\n";
-                        this->readHeader();
+                        // send the udp port
+                        this->tcpSend(
+                            MessageType::udpPort,
+                            ::std::uint16_t(m_udpSocket.local_endpoint().port())
+                        );
+                        server.validateConnection(this->shared_from_this());
+                        this->tcpReadHeader();
                     } else {
                         this->disconnect();
                     }
                 } else {
-                    ::std::cerr << "[" << m_id << "] Hand shake failed\n";
+                    ::std::cerr << "[ERROR:" << m_id << "] Handshake failed, incorrect value\n";
                     m_owner.onIdentificationDenial(this->shared_from_this());
                     this->disconnect();
                 }
                 delete handshakeReceivedPtr;
-            } else {
-                ::std::cerr << "[" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
-                this->disconnect();
             }
         }
     );
@@ -452,7 +645,7 @@ template <
 )
 {
     ::boost::asio::async_read(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(handshakeReceivedPtr->data(), handshakeReceivedPtr->size()),
         [
             this,
@@ -461,11 +654,11 @@ template <
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                this->clientResolveHandshake(handshakeReceivedPtr);
-            } else {
-                ::std::cerr << "[" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
                 this->disconnect();
+            } else {
+                this->clientResolveHandshake(handshakeReceivedPtr);
             }
         }
     );
@@ -485,17 +678,17 @@ template <
     auto handshakeResolvedEncrypted{ m_cipher.encrypt(&handshakeResolved, sizeof(handshakeResolved)) };
     delete handshakeReceivedPtr;
     ::boost::asio::async_write(
-        m_socket,
+        m_tcpSocket,
         ::boost::asio::buffer(handshakeResolvedEncrypted.data(), handshakeResolvedEncrypted.size()),
         [this](
             const boost::system::error_code& errorCode,
             const ::std::size_t length
         ) {
-            if (!errorCode) {
-                this->readHeader();
-            } else {
-                ::std::cerr << "[" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
+            if (errorCode) {
+                ::std::cerr << "[ERROR:" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
                 this->disconnect();
+            } else {
+                this->tcpReadHeader();
             }
         }
     );

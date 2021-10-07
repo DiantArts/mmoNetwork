@@ -14,7 +14,18 @@ template class ::network::Message<::network::MessageType>;
 
 template <
     ::detail::IsEnum MessageType
-> ::network::Message<MessageType>::Message()
+> ::network::Message<MessageType>::Message() = default;
+
+template <
+    ::detail::IsEnum MessageType
+> ::network::Message<MessageType>::Message(
+    MessageType&& messageType,
+    ::network::TransmissionProtocol&& transmissionProtocol
+)
+    : m_header{
+        .packetType = ::std::forward<decltype(messageType)>(messageType),
+        .transmissionProtocol = ::std::forward<::network::TransmissionProtocol>(transmissionProtocol)
+    }
 {}
 
 template <
@@ -28,7 +39,7 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> [[ nodiscard ]] auto ::network::Message<MessageType>::getBodySize() const
+> auto ::network::Message<MessageType>::getBodySize() const
     -> ::std::size_t
 {
     return m_header.bodySize;
@@ -36,15 +47,24 @@ template <
 
 template <
     ::detail::IsEnum MessageType
-> [[ nodiscard ]] auto ::network::Message<MessageType>::getSize() const
+> auto ::network::Message<MessageType>::getSize() const
     -> ::std::size_t
 {
     return this->getHeaderSize() + this->getBodySize();
 }
 
+
 template <
     ::detail::IsEnum MessageType
-> [[ nodiscard ]] auto ::network::Message<MessageType>::isBodyEmpty() const
+> auto ::network::Message<MessageType>::getTransmissionProtocol() const
+    -> ::network::TransmissionProtocol
+{
+    return m_header.transmissionProtocol;
+}
+
+template <
+    ::detail::IsEnum MessageType
+> auto ::network::Message<MessageType>::isBodyEmpty() const
     -> bool
 {
     return m_header.bodySize == 0;
@@ -129,5 +149,5 @@ template <
 ) const
 {
     ::std::cout << direction << " [body]\n";
-    // ::std::cout.write((char*)m_body.data(), m_header.bodySize);
+    ::std::cout.write((char*)m_body.data(), m_header.bodySize);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Detail/Concepts.hpp>
+#include <Network/TransmissionProtocol.hpp>
 
 
 
@@ -17,8 +18,9 @@ public:
     // ------------------------------------------------------------------ Header
 
     struct Header {
-        MessageType packetType{};
-        ::std::uint32_t bodySize{ 0 };
+        MessageType packetType;
+        ::network::TransmissionProtocol transmissionProtocol;
+        ::std::uint16_t bodySize{ 0 };
     };
 
 
@@ -31,9 +33,18 @@ public:
 
     Message(
         MessageType&& messageType,
+        ::network::TransmissionProtocol&& transmissionProtocol
+    );
+
+    Message(
+        MessageType&& messageType,
+        ::network::TransmissionProtocol&& transmissionProtocol,
         auto&&... args
     )
-        : m_header{ .packetType = ::std::forward<decltype(messageType)>(messageType) }
+        : m_header{
+            .packetType = ::std::forward<decltype(messageType)>(messageType),
+            .transmissionProtocol = ::std::forward<::network::TransmissionProtocol>(transmissionProtocol)
+        }
     {
         this->insert(::std::forward<decltype(args)>(args)...);
     }
@@ -142,6 +153,9 @@ public:
 
     [[ nodiscard ]] auto getSize() const
         -> ::std::size_t;
+
+    [[ nodiscard ]] auto getTransmissionProtocol() const
+        -> ::network::TransmissionProtocol;
 
     [[ nodiscard ]] auto isBodyEmpty() const
         -> bool;

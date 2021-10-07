@@ -6,13 +6,14 @@ namespace network {
 
 
 
-enum class MessageType : uint32_t
+enum class MessageType : uint8_t
 {
-    Error = 0,
-    IdentificationDenied,
-    Ping,
-    MessageAll,
-    Message
+    error = 0,
+    udpPort,
+    identificationDenied,
+    ping,
+    messageAll,
+    message
 };
 
 

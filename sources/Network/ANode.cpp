@@ -33,7 +33,9 @@ template <
 > void ::network::ANode<MessageType>::pullIncommingMessage()
 {
     auto message{ m_messagesIn.pop_front() };
-    this->onReceive(message, message.getRemote());
+    if (!this->defaultReceiveBehaviour(message, message.getRemote())) {
+        this->onTcpReceive(message, message.getRemote());
+    }
 }
 
 template <
@@ -103,20 +105,39 @@ template <
     ::std::cout << "[" << connection->getId() << "] Disconnected\n";
 }
 
+
+
 // after receiving
 template <
     ::detail::IsEnum MessageType
-> void ::network::ANode<MessageType>::onReceive(
-    const ::network::Message<MessageType>& message,
+> void ::network::ANode<MessageType>::onTcpReceive(
+    ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
 {}
 
-// before sending
 template <
     ::detail::IsEnum MessageType
-> void ::network::ANode<MessageType>::onSend(
-    const ::network::Message<MessageType>& message,
+> void ::network::ANode<MessageType>::onUdpReceive(
+    ::network::Message<MessageType>& message,
+    ::std::shared_ptr<::network::Connection<MessageType>> connection
+)
+{}
+
+
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::ANode<MessageType>::onTcpSend(
+    ::network::Message<MessageType>& message,
+    ::std::shared_ptr<::network::Connection<MessageType>> connection
+)
+{}
+
+template <
+    ::detail::IsEnum MessageType
+> void ::network::ANode<MessageType>::onUdpSend(
+    ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
 {}
@@ -139,5 +160,5 @@ template <
 )
 {
     ::std::cerr << "[" << connection->getId() << "] Identification denied\n";
-    connection->send(::network::MessageType::IdentificationDenied);
+    connection->tcpSend(MessageType::identificationDenied);
 }

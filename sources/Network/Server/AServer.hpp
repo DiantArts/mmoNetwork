@@ -54,64 +54,192 @@ public:
 
 
 
-    // ------------------------------------------------------------------ async - out
+    // ------------------------------------------------------------------ async - autoProtocol
 
     void send(
-        const ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> client
+        ::network::Message<MessageType>&& message,
+        ::std::shared_ptr<::network::Connection<MessageType>>&& client
     );
 
     void send(
-        const ::network::Message<MessageType>& message,
-        ::std::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... clients
     )
     {
-        auto invalidClientDetected{ false };
+        if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
+            this->tcpSend(
+                ::std::forward<decltype(message)>(message),
+                ::std::forward<decltype(clients)>(clients)...
+            );
+        } else {
+            this->udpSend(
+                message,
+                ::std::forward<decltype(message)>(message),
+                ::std::forward<decltype(clients)>(clients)...
+            );
+        }
+    }
 
+    void sendToAllClients(
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... ignoredClients
+    )
+    {
+        if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
+            this->tcpSendToAllClients(
+                ::std::forward<decltype(message)>(message),
+                ::std::forward<decltype(ignoredClients)>(ignoredClients)...
+            );
+        } else {
+            this->udpSendToAllClients(
+                ::std::forward<decltype(message)>(message),
+                ::std::forward<decltype(ignoredClients)>(ignoredClients)...
+            );
+        }
+    }
+
+
+
+    // ------------------------------------------------------------------ async - tcpOut
+
+    void tcpSend(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> client
+    );
+
+    void tcpSend(
+        ::network::Message<MessageType>&& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> client
+    );
+
+    void tcpSend(
+        ::network::Message<MessageType>& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+    )
+    {
         for (auto& client : {clients...}) {
-            if (client->isConnected()) {
-                this->onSend(message, client);
-                client->send(message);
-            } else {
-                this->onDisconnect(client);
-                client.reset();
-                invalidClientDetected = true;
-            }
-        }
-
-        if (invalidClientDetected) {
-            m_connections.resize(m_connections.size() - ::std::ranges::remove(m_connections, nullptr).size());
+            this->onTcpSend(message, client);
+            client->tcpSend(message);
         }
     }
 
-    void sendToAllClient(
-        const ::network::Message<MessageType>& message,
-        ::std::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+    void tcpSend(
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
-        auto invalidClientDetected{ false };
-
-        for (auto& client : m_connections) {
-            if (client->isConnected()) {
-                if (((client != ignoredClients) && ...)) {
-                    this->onSend(message, client);
-                    client->send(message);
-                }
-            } else {
-                this->onDisconnect(client);
-                client.reset();
-                invalidClientDetected = true;
-            }
-        }
-
-        if (invalidClientDetected) {
-            m_connections.resize(m_connections.size() - ::std::ranges::remove(m_connections, nullptr).size());
+        for (auto& client : {clients...}) {
+            this->onTcpSend(message, client);
+            client->tcpSend(::std::move(message));
         }
     }
+
+    void tcpSendToAllClients(
+        ::network::Message<MessageType>& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+    )
+    {
+        for (auto& client : m_connections) {
+            if (((client != ignoredClients) && ...)) {
+                this->onTcpSend(message, client);
+                client->tcpSend(message);
+            }
+        }
+    }
+
+    void tcpSendToAllClients(
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+    )
+    {
+        for (auto& client : m_connections) {
+            if (((client != ignoredClients) && ...)) {
+                this->onTcpSend(message, client);
+                client->tcpSend(::std::move(message));
+            }
+        }
+    }
+
+
+
+    // ------------------------------------------------------------------ async - udpOut
+
+    void udpSend(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> client
+    );
+
+    void udpSend(
+        ::network::Message<MessageType>&& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> client
+    );
+
+    void udpSend(
+        ::network::Message<MessageType>& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+    )
+    {
+        for (auto& client : {clients...}) {
+            this->onUdpSend(message, client);
+            client->udpSend(message);
+        }
+    }
+
+    void udpSend(
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+    )
+    {
+        for (auto& client : {clients...}) {
+            this->onUdpSend(message, client);
+            client->udpSend(::std::move(message));
+        }
+    }
+
+    void udpSendToAllClients(
+        ::network::Message<MessageType>& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+    )
+    {
+        for (auto& client : m_connections) {
+            if (((client != ignoredClients) && ...)) {
+                this->onUdpSend(message, client);
+                client->udpSend(message);
+            }
+        }
+    }
+
+    void udpSendToAllClients(
+        ::network::Message<MessageType>&& message,
+        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+    )
+    {
+        for (auto& client : m_connections) {
+            if (((client != ignoredClients) && ...)) {
+                this->onUdpSend(message, client);
+                client->udpSend(::std::move(message));
+            }
+        }
+    }
+
+
+
+    // ------------------------------------------------------------------ receive behaviour
+
+    virtual auto defaultReceiveBehaviour(
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ) -> bool
+        override final;
 
 
 
     // ------------------------------------------------------------------ user methods
+
+    // handle the disconnection
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    );
 
     // refuses the connection by returning false
     virtual auto onClientConnect(
@@ -125,16 +253,32 @@ public:
 
 
 
+    // ------------------------------------------------------------------ other
+
+    // needs inlinment for linkage pupruses
+    inline void validateConnection(
+        ::std::shared_ptr<::network::Connection<MessageType>> connection
+    )
+    {
+        ::std::cout << connection.use_count() << ::std::endl;
+        m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
+        ::std::cout << connection.use_count() << ::std::endl;
+        m_connections.push_back(::std::move(connection));
+    }
+
+
 
 private:
 
     // hardware connection to the server
     ::boost::asio::ip::tcp::acceptor m_asioAcceptor;
 
-
+    ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_incommingConnections;
     ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_connections;
 
     ::detail::Id m_idCounter{ 1 };
+
+    bool hasClientBeenDisconnected{ false };
 
 };
 

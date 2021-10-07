@@ -32,7 +32,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::front()
+> auto ::detail::Queue<Type>::front()
     -> Type&
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -55,7 +55,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::pop_front()
+> auto ::detail::Queue<Type>::pop_front()
     -> Type
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -78,7 +78,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::back()
+> auto ::detail::Queue<Type>::back()
     -> Type&
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -101,7 +101,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::pop_back()
+> auto ::detail::Queue<Type>::pop_back()
     -> Type
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -124,7 +124,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::empty()
+> auto ::detail::Queue<Type>::empty()
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -133,7 +133,7 @@ template <
 
 template <
     typename Type
-> [[ nodiscard ]] auto ::detail::Queue<Type>::count()
+> auto ::detail::Queue<Type>::count()
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
