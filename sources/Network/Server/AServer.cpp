@@ -237,6 +237,9 @@ template <
 ) -> bool
 {
     switch (message.getType()) {
+    case MessageType::ping:
+        connection->tcpSend(message);
+        break;
     default:
         return false;
     }
@@ -247,15 +250,23 @@ template <
 
 // ------------------------------------------------------------------ user methods
 
-// handle the disconnection
 template <
     ::detail::IsEnum MessageType
 > void ::network::AServer<MessageType>::onDisconnect(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::Connection<MessageType>> disconnectedConnection
 )
 {
-    ::std::cout << '[' << m_connections.back()->getId() << "] Disconnected.\n";
-    m_connections.erase(::std::ranges::find(m_connections, connection));
+    ::std::cout << '[' << disconnectedConnection->getId() << "] Disconnected.\n";
+    ::std::erase_if(
+        m_connections,
+        [
+            disconnectedConnection
+        ](
+            const ::std::shared_ptr<::network::Connection<MessageType>>& connection
+        ){
+            return connection == disconnectedConnection;
+        }
+    );
 }
 
 // refuses the connection by returning false, when connection is done

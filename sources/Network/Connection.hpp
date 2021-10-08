@@ -35,17 +35,12 @@ public:
 
 
 
-
     // ------------------------------------------------------------------ async - connection
 
-    // server
     auto connectToClient(
         ::detail::Id id
     ) -> bool;
 
-
-
-    // client
     void connectToServer(
         const ::std::string& host,
         ::std::uint16_t port
@@ -55,24 +50,10 @@ public:
         ::std::uint16_t port
     );
 
-
-
-    // common
     void disconnect();
 
     auto isConnected() const
         -> bool;
-
-
-
-
-    // ------------------------------------------------------------------ async - tcpIn
-
-    void tcpReadHeader();
-
-    void tcpReadBody();
-
-    void tcpTransferBufferToInQueue();
 
 
 
@@ -94,7 +75,7 @@ public:
             {
                 auto wasOutQueueEmpty{ m_tcpMessagesOut.empty() };
                 m_tcpMessagesOut.push_back(::std::move(message));
-                if (wasOutQueueEmpty) {
+                if (m_isValid && wasOutQueueEmpty) {
                     this->tcpWriteHeader();
                 }
             }
@@ -104,25 +85,6 @@ public:
     void tcpSend(
         ::network::Message<MessageType> message
     );
-
-    void tcpWriteHeader();
-
-    void tcpWriteBody();
-
-
-
-
-    // ------------------------------------------------------------------ async - udpIn
-
-    void udpReadHeader(
-        ::std::size_t bytesAlreadyRead = 0
-    );
-
-    void udpReadBody(
-        ::std::size_t bytesAlreadyRead = 0
-    );
-
-    void udpTransferBufferToInQueue();
 
 
 
@@ -144,7 +106,7 @@ public:
             {
                 auto wasOutQueueEmpty{ m_udpMessagesOut.empty() };
                 m_udpMessagesOut.push_back(::std::move(message));
-                if (wasOutQueueEmpty) {
+                if (m_isValid && wasOutQueueEmpty) {
                     this->udpWriteHeader();
                 }
             }
@@ -154,6 +116,27 @@ public:
     void udpSend(
         ::network::Message<MessageType> message
     );
+
+
+
+    // ------------------------------------------------------------------ other
+
+    [[ nodiscard ]] auto getId() const
+        -> ::detail::Id;
+
+
+
+private:
+
+    // ------------------------------------------------------------------ async - tcpOut
+
+    void tcpWriteHeader();
+
+    void tcpWriteBody();
+
+
+
+    // ------------------------------------------------------------------ async - udpOut
 
     void udpWriteHeader(
         ::std::size_t bytesAlreadySent = 0
@@ -165,10 +148,28 @@ public:
 
 
 
-    // ------------------------------------------------------------------ other
+    // ------------------------------------------------------------------ async - tcpIn
 
-    [[ nodiscard ]] auto getId() const
-        -> ::detail::Id;
+    void tcpReadHeader();
+
+    void tcpReadBody();
+
+    void tcpTransferBufferToInQueue();
+
+
+
+
+    // ------------------------------------------------------------------ async - udpIn
+
+    void udpReadHeader(
+        ::std::size_t bytesAlreadyRead = 0
+    );
+
+    void udpReadBody(
+        ::std::size_t bytesAlreadyRead = 0
+    );
+
+    void udpTransferBufferToInQueue();
 
 
 
@@ -203,6 +204,12 @@ private:
         >* handshakeReceivedPtr
     );
 
+    void sendIdentificationAcceptanceHeader();
+
+    void sendIdentificationAcceptanceBody(
+        ::network::Message<MessageType>* message
+    );
+
 
 
     void clientHandshake();
@@ -220,6 +227,10 @@ private:
             ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
         >* handshakeReceivedPtr
     );
+
+    void clientWaitIdentificationAcceptanceHeader();
+
+    void clientWaitIdentificationAcceptanceBody();
 
 
 
@@ -250,6 +261,8 @@ private:
     ::security::Cipher m_cipher;
 
     ::detail::Id m_id{ 1 };
+
+    bool m_isValid{ false };
 
 };
 

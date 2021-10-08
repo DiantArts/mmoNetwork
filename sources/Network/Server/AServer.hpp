@@ -260,9 +260,7 @@ public:
         ::std::shared_ptr<::network::Connection<MessageType>> connection
     )
     {
-        ::std::cout << connection.use_count() << ::std::endl;
         m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
-        ::std::cout << connection.use_count() << ::std::endl;
         m_connections.push_back(::std::move(connection));
     }
 

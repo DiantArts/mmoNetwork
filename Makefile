@@ -428,11 +428,11 @@ debug2 : linkage2
 
 auto_valgrind : linkage1
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_valgrind $(ARGV)\n"
-	valgrind --track-origins=yes --log-file="clientValgrind.log" ./$(NAME1)$(MODE_EXT) $(ARGV1) && cat clientValgrind.log
+	valgrind --track-origins=yes ./$(NAME1)$(MODE_EXT) $(ARGV1) && cat clientValgrind.log
 
 auto_valgrind2 : linkage2
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_valgrind $(ARGV)\n"
-	valgrind --track-origins=yes --log-file="serverValgrind.log" ./$(NAME2)$(MODE_EXT) $(ARGV2) && cat serverValgrind.log
+	valgrind --track-origins=yes ./$(NAME2)$(MODE_EXT) $(ARGV2) && cat serverValgrind.log
 
 auto_gdb : linkage1
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_gdb $(ARGV)\n"

@@ -22,8 +22,8 @@ template <
     ::detail::IsEnum MessageType
 > ::network::AClient<MessageType>::~AClient()
 {
-    this->disconnect();
     this->stop();
+    this->disconnect();
 }
 
 
@@ -65,15 +65,15 @@ template <
         m_connection.reset();
         ::std::cout << "Disconnected" << '\n';
     }
+    this->getIncommingMessages().notify();
 }
 
 template <
     ::detail::IsEnum MessageType
 > void ::network::AClient<MessageType>::stop()
 {
-    this->getIncommingMessages().notify();
-    this->getAsioContext().stop();
     if(this->getThreadContext().joinable()) {
+        this->getAsioContext().stop();
         this->getThreadContext().join();
     }
 }
@@ -146,11 +146,6 @@ template <
 ) -> bool
 {
     switch (message.getType()) {
-    case MessageType::udpPort:
-        ::std::uint16_t udpPort;
-        message >> udpPort;
-        m_connection->targetServerUdpPort(udpPort);
-        break;
     default:
         return false;
     }

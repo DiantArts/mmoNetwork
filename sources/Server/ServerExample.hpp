@@ -57,10 +57,7 @@ private:
                 connection
             );
             break;
-        } case ::network::MessageType::ping:
-        default:
-            connection->tcpSend(message);
-            break;
+        } default: break;
         }
     }
 

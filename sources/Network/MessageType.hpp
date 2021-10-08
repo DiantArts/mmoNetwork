@@ -9,7 +9,7 @@ namespace network {
 enum class MessageType : uint8_t
 {
     error = 0,
-    udpPort,
+    identificationAccepted, // contains udp port number
     identificationDenied,
     ping,
     messageAll,

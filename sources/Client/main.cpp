@@ -36,6 +36,7 @@ int main(int argc, char **argv)
             }
         }
         client.stop();
+        client.disconnect();
         thread.join();
 
         return EXIT_SUCCESS;
