@@ -14,7 +14,7 @@ namespace network {
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > class AClient
     : public ::network::ANode<MessageType>
 {

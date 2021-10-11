@@ -13,7 +13,7 @@ template class ::network::OwnedMessage<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::OwnedMessage<MessageType>::OwnedMessage(
     ::network::Message<MessageType> message,
     ::std::shared_ptr<::network::Connection<MessageType>> remote
@@ -23,7 +23,7 @@ template <
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::OwnedMessage<MessageType>::~OwnedMessage() = default;
 
 
@@ -31,7 +31,7 @@ template <
 // ------------------------------------------------------------------ informations
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::OwnedMessage<MessageType>::getRemote() const
     -> ::std::shared_ptr<::network::Connection<MessageType>>
 {

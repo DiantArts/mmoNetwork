@@ -13,13 +13,13 @@ template class ::network::AClient<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::AClient<MessageType>::AClient()
     : ::network::ANode<MessageType>{ ::network::ANode<MessageType>::Type::client }
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::AClient<MessageType>::~AClient()
 {
     this->stop();
@@ -31,7 +31,7 @@ template <
 // ------------------------------------------------------------------ connection
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AClient<MessageType>::connect(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -53,7 +53,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::disconnect()
 {
     if (this->isConnected()) {
@@ -69,7 +69,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::stop()
 {
     if(this->getThreadContext().joinable()) {
@@ -79,7 +79,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AClient<MessageType>::isConnected()
     -> bool
 {
@@ -91,7 +91,7 @@ template <
 // ------------------------------------------------------------------ async - tcpOut
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::tcpSend(
     ::network::Message<MessageType>& message
 )
@@ -101,7 +101,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::tcpSend(
     ::network::Message<MessageType>&& message
 )
@@ -115,7 +115,7 @@ template <
 // ------------------------------------------------------------------ async - udpOut
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::udpSend(
     ::network::Message<MessageType>& message
 )
@@ -125,7 +125,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AClient<MessageType>::udpSend(
     ::network::Message<MessageType>&& message
 )
@@ -139,7 +139,7 @@ template <
 // ------------------------------------------------------------------ receive behaviour
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AClient<MessageType>::defaultReceiveBehaviour(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection

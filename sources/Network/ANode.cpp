@@ -13,7 +13,7 @@ template class ::network::ANode<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::ANode<MessageType>::ANode(
     ANode<MessageType>::Type type
 )
@@ -21,7 +21,7 @@ template <
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::ANode<MessageType>::~ANode() = default;
 
 
@@ -29,7 +29,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::pullIncommingMessage()
 {
     auto message{ m_messagesIn.pop_front() };
@@ -39,7 +39,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::pullIncommingMessages()
 {
     while (!m_messagesIn.empty()) {
@@ -48,7 +48,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::blockingPullIncommingMessages()
 {
     m_messagesIn.wait();
@@ -56,7 +56,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::ANode<MessageType>::getIncommingMessages()
     -> ::detail::Queue<::network::OwnedMessage<MessageType>>&
 {
@@ -68,7 +68,7 @@ template <
 // ------------------------------------------------------------------ getter
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::ANode<MessageType>::getAsioContext()
     -> ::boost::asio::io_context&
 {
@@ -76,7 +76,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::ANode<MessageType>::getThreadContext()
     -> ::std::thread&
 {
@@ -84,7 +84,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::ANode<MessageType>::getType()
     -> ANode<MessageType>::Type
 {
@@ -97,7 +97,7 @@ template <
 
 // before the actual disconnection
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onDisconnect(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
@@ -109,7 +109,7 @@ template <
 
 // after receiving
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onTcpReceive(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -117,7 +117,7 @@ template <
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onUdpReceive(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -127,7 +127,7 @@ template <
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onTcpSend(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -135,7 +135,7 @@ template <
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onUdpSend(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -147,14 +147,14 @@ template <
 // ------------------------------------------------------------------ error user methods
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onConnectionDenial(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )
 {}
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onIdentificationDenial(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 )

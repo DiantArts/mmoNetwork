@@ -12,7 +12,7 @@ namespace network {
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > class ANode {
 
 public:

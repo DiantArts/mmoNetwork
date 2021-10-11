@@ -13,7 +13,7 @@ namespace network {
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > class AServer
     : public ::network::ANode<MessageType>
 {
@@ -63,7 +63,7 @@ public:
 
     void send(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... clients
     )
     {
         if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
@@ -82,7 +82,7 @@ public:
 
     void sendToAllClients(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... ignoredClients
     )
     {
         if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
@@ -114,7 +114,7 @@ public:
 
     void tcpSend(
         ::network::Message<MessageType>& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -125,7 +125,7 @@ public:
 
     void tcpSend(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -136,7 +136,7 @@ public:
 
     void tcpSendToAllClients(
         ::network::Message<MessageType>& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
@@ -149,7 +149,7 @@ public:
 
     void tcpSendToAllClients(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
@@ -176,7 +176,7 @@ public:
 
     void udpSend(
         ::network::Message<MessageType>& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -187,7 +187,7 @@ public:
 
     void udpSend(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -198,7 +198,7 @@ public:
 
     void udpSendToAllClients(
         ::network::Message<MessageType>& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
@@ -211,7 +211,7 @@ public:
 
     void udpSendToAllClients(
         ::network::Message<MessageType>&& message,
-        ::detail::same_as<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {

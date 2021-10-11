@@ -13,7 +13,7 @@ template class ::network::AServer<::network::MessageType>;
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::AServer<MessageType>::AServer(
     const ::std::uint16_t port
 )
@@ -27,7 +27,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > ::network::AServer<MessageType>::~AServer()
 {
     this->stop();
@@ -38,7 +38,7 @@ template <
 // ------------------------------------------------------------------ running
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::start()
     -> bool
 {
@@ -57,7 +57,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::stop()
 {
     if (this->isRunning()) {
@@ -73,7 +73,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::isRunning()
     -> bool
 {
@@ -86,7 +86,7 @@ template <
 // ------------------------------------------------------------------ in - async
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::startReceivingConnections()
 {
     m_asioAcceptor.async_accept(
@@ -124,7 +124,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::pullIncommingMessage()
 {
     auto message{ this->getIncommingMessages().pop_front() };
@@ -133,7 +133,7 @@ template <
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::pullIncommingMessages()
 {
     while (!this->getIncommingMessages().empty()) {
@@ -142,7 +142,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::blockingPullIncommingMessages()
 {
     this->getIncommingMessages().wait();
@@ -154,7 +154,7 @@ template <
 // ------------------------------------------------------------------ async - autoProtocol
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::send(
     ::network::Message<MessageType>&& message,
     ::std::shared_ptr<::network::Connection<MessageType>>&& client
@@ -178,7 +178,7 @@ template <
 // ------------------------------------------------------------------ async - tcpOut
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::tcpSend(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> client
@@ -189,7 +189,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::tcpSend(
     ::network::Message<MessageType>&& message,
     ::std::shared_ptr<::network::Connection<MessageType>> client
@@ -204,7 +204,7 @@ template <
 // ------------------------------------------------------------------ async - udpOut
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::udpSend(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> client
@@ -215,7 +215,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::udpSend(
     ::network::Message<MessageType>&& message,
     ::std::shared_ptr<::network::Connection<MessageType>> client
@@ -230,7 +230,7 @@ template <
 // ------------------------------------------------------------------ receive behaviour
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::defaultReceiveBehaviour(
     ::network::Message<MessageType>& message,
     ::std::shared_ptr<::network::Connection<MessageType>> connection
@@ -251,7 +251,7 @@ template <
 // ------------------------------------------------------------------ user methods
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::onDisconnect(
     ::std::shared_ptr<::network::Connection<MessageType>> disconnectedConnection
 )
@@ -271,7 +271,7 @@ template <
 
 // refuses the connection by returning false, when connection is done
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::onClientConnect(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 ) -> bool
@@ -280,7 +280,7 @@ template <
 }
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::onClientIdentificate(
     ::std::shared_ptr<::network::Connection<MessageType>> connection
 ) -> bool

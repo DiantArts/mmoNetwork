@@ -2,7 +2,7 @@
 
 #include <Network/Message.hpp>
 
-namespace network { template <::detail::IsEnum MessageType> class Connection; }
+namespace network { template <::detail::isEnum MessageType> class Connection; }
 
 
 
@@ -11,7 +11,7 @@ namespace network {
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > class OwnedMessage
     : public ::network::Message<MessageType>
 {

@@ -10,7 +10,7 @@ namespace network {
 
 
 template <
-    ::detail::IsEnum MessageType
+    ::detail::isEnum MessageType
 > class Message {
 
 public:
@@ -57,7 +57,7 @@ public:
     // Insert any POD-like data into the body
 
     void insert(
-        ::detail::IsStandardLayout auto&& data
+        ::detail::isStandardLayout auto&& data
     )
     {
         // change size and alloc if needed
@@ -70,14 +70,14 @@ public:
 
     // Multiple insertions
     void insert(
-        ::detail::IsStandardLayout auto&&... data
+        ::detail::isStandardLayout auto&&... data
     )
     {
         (this->insert(::std::forward<decltype(data)>(data)), ...);
     }
 
     auto operator<<(
-        ::detail::IsStandardLayout auto&& data
+        ::detail::isStandardLayout auto&& data
     ) -> Message<MessageType>&
     {
         this->insert(::std::forward<decltype(data)>(data));
@@ -85,7 +85,7 @@ public:
     }
 
     auto operator<<(
-        const ::detail::IsStandardLayout auto& data
+        const ::detail::isStandardLayout auto& data
     ) -> Message<MessageType>&
     {
         decltype(data) copiedData{ data };
@@ -99,7 +99,7 @@ public:
     // Extract any POD-like data from the end of the body
 
     auto extract(
-        ::detail::IsStandardLayout auto& data
+        ::detail::isStandardLayout auto& data
     ) -> Message<MessageType>&
     {
         m_header.bodySize -= sizeof(data);
@@ -114,7 +114,7 @@ public:
     }
 
     template <
-        ::detail::IsStandardLayout DataType
+        ::detail::isStandardLayout DataType
     > auto extract()
         -> DataType
     {
@@ -132,7 +132,7 @@ public:
     }
 
     auto operator>>(
-        ::detail::IsStandardLayout auto& data
+        ::detail::isStandardLayout auto& data
     ) -> Message<MessageType>&
     {
         return this->extract(data);
