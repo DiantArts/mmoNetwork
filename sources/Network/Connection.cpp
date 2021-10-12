@@ -426,43 +426,28 @@ template <
 > void ::network::Connection<MessageType>::identificate()
 {
     // send public key
-    ::boost::asio::async_write(
-        m_tcpSocket,
-        ::boost::asio::buffer(m_cipher.getPublicKeyAddr(), m_cipher.getPublicKeySize()),
-        [this](
-            const boost::system::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                ::std::cerr << "[ERROR:" << m_id << "] Write header failed: " << errorCode.message() << ".\n";
-                this->disconnect();
-            }
+    this->tcpSendRawData<
+        [](...){},
+        [](::network::Connection<MessageType>& self, const boost::system::error_code& errorCode){
+            ::std::cerr << "[ERROR:" << self.m_id << "] Write header failed: " << errorCode.message() << ".\n";
+            self.disconnect();
         }
-    );
+    >(m_cipher.getPublicKeyAddr(), m_cipher.getPublicKeySize());
 
     // read public key
-    ::boost::asio::async_read(
-        m_tcpSocket,
-        ::boost::asio::buffer(m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize()),
-        [this](
-            const boost::system::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                ::std::cerr << "[ERROR:" << m_id << "] Read public key failed: " << errorCode.message() << ".\n";
-                this->disconnect();
+    this->tcpReceiveToRawData<
+        [](::network::Connection<MessageType>& self){
+            if (self.m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
+                return self.serverHandshake();
             } else {
-                if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
-                    return this->serverHandshake();
-                } else {
-                    return this->clientHandshake();
-                }
-                // no return means error
-                m_owner.onIdentificationDenial(this->shared_from_this());
-                this->disconnect();
+                return self.clientHandshake();
             }
+        },
+        [](::network::Connection<MessageType>& self, const boost::system::error_code& errorCode){
+            ::std::cerr << "[ERROR:" << self.m_id << "] Read public key failed: " << errorCode.message() << ".\n";
+            self.disconnect();
         }
-    );
+    >(m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize());
 }
 
 
@@ -487,19 +472,13 @@ template <
     ::std::vector<::std::byte>&& encryptedBaseValue
 )
 {
-    ::boost::asio::async_write(
-        m_tcpSocket,
-        ::boost::asio::buffer(encryptedBaseValue.data(), encryptedBaseValue.size()),
-        [this](
-            const boost::system::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                ::std::cerr << "[ERROR:" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
-                this->disconnect();
-            }
+    this->tcpSendRawData<
+        [](...){},
+        [](::network::Connection<MessageType>& self, const boost::system::error_code& errorCode){
+            ::std::cerr << "[ERROR:" << self.m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
+            self.disconnect();
         }
-    );
+    >(encryptedBaseValue.data(), encryptedBaseValue.size());
 }
 
 template <
@@ -659,31 +638,74 @@ template <
     ::detail::isEnum MessageType
 > void ::network::Connection<MessageType>::clientWaitIdentificationAcceptanceHeader()
 {
-    ::boost::asio::async_read(
-        m_tcpSocket,
-        ::boost::asio::buffer(m_tcpBufferIn.getHeaderAddr(), m_tcpBufferIn.getHeaderSize()),
-        [this](
-            const boost::system::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                ::std::cerr << "[ERROR:" << m_id << "] Iidentificaion acceptance failed: "
-                    << errorCode.message() << ".\n";
-                this->disconnect();
-            } else {
-                if (m_tcpBufferIn.getType() == MessageType::identificationAccepted) {
-                    this->clientWaitIdentificationAcceptanceBody();
-                } else if (m_tcpBufferIn.getType() == MessageType::identificationDenied) {
-                    ::std::cerr << "[ERROR:" << m_id << "] Iidentificaion denied.\n";
-                    this->disconnect();
-                } else {
-                    ::std::cerr << "[ERROR:" << m_id << "] Identificaion failed, "
-                        << "unexpected message received.\n";
-                    this->disconnect();
+    this->tcpReceiveMessage<
+        [](::network::Connection<MessageType>& self){
+            if (self.m_tcpBufferIn.getType() == MessageType::identificationAccepted) {
+                // get udp port
+                ::std::uint16_t udpPort;
+                self.m_tcpBufferIn.extract(udpPort);
+                self.targetServerUdpPort(udpPort);
+
+                // start reading/writing tcp
+                self.startReadMessage();
+                if (!self.m_tcpMessagesOut.empty()) {
+                    self.tcpWriteAwaitingMessages();
                 }
+
+                // start reading/writing udp
+                self.udpReadHeader();
+                if (!self.m_udpMessagesOut.empty()) {
+                    self.udpWriteHeader();
+                }
+
+                self.m_isValid = true;
+                ::std::cout << "[" << self.m_id << "] Identificaion accepted.\n";
+            } else if (self.m_tcpBufferIn.getType() == MessageType::identificationDenied) {
+                ::std::cerr << "[ERROR:" << self.m_id << "] Iidentificaion denied.\n";
+                self.disconnect();
+            } else {
+                ::std::cerr << "[ERROR:" << self.m_id << "] Identificaion failed, "
+                    << "unexpected message received.\n";
+                self.disconnect();
             }
+        },
+        [](::network::Connection<MessageType>& self, const boost::system::error_code& errorCode){
+            ::std::cerr << "[ERROR:" << self.m_id << "] Identificaion acceptance failed: "
+                << errorCode.message() << ".\n";
+            self.disconnect();
+        },
+        [](::network::Connection<MessageType>& self, const boost::system::error_code& errorCode){
+            ::std::cerr << "[ERROR:" << self.m_id << "] Iidentificaion acceptance failed: "
+                << errorCode.message() << ".\n";
+            self.disconnect();
         }
-    );
+    >();
+
+    // ::boost::asio::async_read(
+        // m_tcpSocket,
+        // ::boost::asio::buffer(m_tcpBufferIn.getHeaderAddr(), m_tcpBufferIn.getHeaderSize()),
+        // [this](
+            // const boost::system::error_code& errorCode,
+            // const ::std::size_t length
+        // ) {
+            // if (errorCode) {
+                // ::std::cerr << "[ERROR:" << m_id << "] Iidentificaion acceptance failed: "
+                    // << errorCode.message() << ".\n";
+                // this->disconnect();
+            // } else {
+                // if (m_tcpBufferIn.getType() == MessageType::identificationAccepted) {
+                    // this->clientWaitIdentificationAcceptanceBody();
+                // } else if (m_tcpBufferIn.getType() == MessageType::identificationDenied) {
+                    // ::std::cerr << "[ERROR:" << m_id << "] Iidentificaion denied.\n";
+                    // this->disconnect();
+                // } else {
+                    // ::std::cerr << "[ERROR:" << m_id << "] Identificaion failed, "
+                        // << "unexpected message received.\n";
+                    // this->disconnect();
+                // }
+            // }
+        // }
+    // );
 }
 
 template <
@@ -699,12 +721,10 @@ template <
             const ::std::size_t length
         ) {
             if (errorCode) {
-                ::std::cerr << "[ERROR:" << m_id << "] Iidentificaion acceptance failed: "
+                ::std::cerr << "[ERROR:" << m_id << "] Identificaion acceptance failed: "
                     << errorCode.message() << ".\n";
                 this->disconnect();
             } else {
-                m_isValid = true;
-                ::std::cerr << "[" << m_id << "] Iidentificaion accepted.\n";
                 this->startReadMessage();
                 if (!m_tcpMessagesOut.empty()) {
                     this->tcpWriteAwaitingMessages();
@@ -717,6 +737,9 @@ template <
                 if (!m_udpMessagesOut.empty()) {
                     this->udpWriteHeader();
                 }
+
+                m_isValid = true;
+                ::std::cout << "[" << m_id << "] Identificaion accepted.\n";
             }
         }
     );

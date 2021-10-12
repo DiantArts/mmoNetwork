@@ -12,8 +12,9 @@ enum class MessageType : uint8_t
     identificationAccepted, // contains udp port number
     identificationDenied,
     ping,
+    message,
     messageAll,
-    message
+    startCall
 };
 
 

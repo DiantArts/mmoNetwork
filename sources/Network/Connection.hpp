@@ -6,7 +6,7 @@
 #include <Detail/Concepts.hpp>
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
-#include <Network/Identifier.hpp>
+// #include <Network/Identifier.hpp>
 
 namespace network { template <::detail::isEnum MessageType> class ANode; }
 
@@ -139,8 +139,7 @@ private:
         auto failureHeaderCallback,
         auto failureBodyCallback
     > void tcpSendMessage(
-        ::network::Message<MessageType> message,
-        auto&&... args
+        ::network::Message<MessageType> message
     )
     {
         ::boost::asio::async_write(
@@ -153,7 +152,7 @@ private:
                     const ::std::size_t length
                 ) {
                     if (errorCode) {
-                        failureHeaderCallback(*this, errorCode);
+                        failureHeaderCallback(::std::ref(*this), errorCode);
                     } else {
                         if (!message.isBodyEmpty()) {
                             ::boost::asio::async_write(
@@ -166,16 +165,16 @@ private:
                                         const ::std::size_t length
                                     ) {
                                         if (errorCode) {
-                                            failureBodyCallback(*this, errorCode);
+                                            failureBodyCallback(::std::ref(*this), errorCode);
                                         } else {
-                                            successCallback(*this);
+                                            successCallback(::std::ref(*this));
                                         }
                                     },
                                     ::std::move(message)
                                 )
                             );
                         } else {
-                            successCallback(*this);
+                            successCallback(::std::ref(*this));
                         }
                     }
                 },
@@ -201,9 +200,9 @@ private:
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureCallback(*this, errorCode);
+                    failureCallback(::std::ref(*this), errorCode);
                 } else {
-                    successCallback(*this);
+                    successCallback(::std::ref(*this));
                 }
                 delete pointerToData;
             }
@@ -221,14 +220,14 @@ private:
         ::boost::asio::async_write(
             m_tcpSocket,
             ::boost::asio::buffer(pointerToData, dataSize),
-            [this, pointerToData](
+            [this](
                 const boost::system::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureCallback(*this, errorCode);
+                    failureCallback(::std::ref(*this), errorCode);
                 } else {
-                    successCallback(*this);
+                    successCallback(::std::ref(*this));
                 }
             }
         );
@@ -266,7 +265,7 @@ private:
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureHeaderCallback(*this, errorCode);
+                    failureHeaderCallback(::std::ref(*this), errorCode);
                 } else {
                     if (!m_tcpBufferIn.isBodyEmpty()) {
                         m_tcpBufferIn.updateBodySize();
@@ -278,14 +277,14 @@ private:
                                 const ::std::size_t length
                             ) {
                                 if (errorCode) {
-                                    failureBodyCallback(*this, errorCode);
+                                    failureBodyCallback(::std::ref(*this), errorCode);
                                 } else {
-                                    successCallback(*this);
+                                    successCallback(::std::ref(*this));
                                 }
                             }
                         );
                     } else {
-                        successCallback(*this);
+                        successCallback(::std::ref(*this));
                     }
                 }
             }
@@ -307,9 +306,9 @@ private:
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureCallback(*this, errorCode);
+                    failureCallback(::std::ref(*this), errorCode);
                 } else {
-                    successCallback(*this, *static_cast<Type*>(pointerToData->data()));
+                    successCallback(::std::ref(*this), *static_cast<Type*>(pointerToData->data()));
                 }
                 delete pointerToData;
             }
@@ -332,9 +331,9 @@ private:
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureCallback(*this, errorCode);
+                    failureCallback(::std::ref(*this), errorCode);
                 } else {
-                    successCallback(*this, *pointerToData);
+                    successCallback(::std::ref(*this));
                 }
             }
         );
@@ -453,12 +452,6 @@ private:
     ::detail::Id m_id{ 1 };
 
     bool m_isValid{ false };
-
-
-
-private:
-
-    friend class ::network::Identifier<MessageType>;
 
 };
 
