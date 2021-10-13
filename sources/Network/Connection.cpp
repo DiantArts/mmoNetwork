@@ -456,6 +456,7 @@ template <
     ::detail::isEnum MessageType
 > void ::network::Connection<MessageType>::serverHandshake()
 {
+    // TODO generating random data through sodium
     auto baseValue{ static_cast<::std::uint64_t>(
         ::std::chrono::system_clock::now().time_since_epoch().count()
     ) };

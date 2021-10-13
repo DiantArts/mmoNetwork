@@ -33,7 +33,7 @@ int main(int argc, char **argv)
             } else if (str == "/p") {
                 client.pingServer();
             } else {
-                client.messageServer();
+                client.messageServer(str);
                 // this->send<::packet::Text>(str);
             }
         }

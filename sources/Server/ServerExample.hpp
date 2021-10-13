@@ -52,6 +52,7 @@ private:
                 ::network::Message{
                     ::network::MessageType::message,
                     ::network::TransmissionProtocol::tcp,
+                    message.extract<::std::string>(),
                     connection->getId()
                 },
                 connection

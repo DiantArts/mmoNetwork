@@ -34,6 +34,75 @@ template <
 
 
 
+// ------------------------------------------------------------------ insert
+// Insert any POD-like data into the body
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::Message<MessageType>::insert(
+    const ::std::string& data
+)
+{
+    this->insertRawData(data.data(), data.size());
+    this->insert<::std::uint16_t>(data.size());
+}
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::Message<MessageType>::insert(
+    const ::std::string_view data
+)
+{
+    this->insertRawData(data.data(), data.size());
+    this->insert<::std::uint16_t>(data.size());
+}
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::Message<MessageType>::insert(
+    const char* ptrToData
+)
+{
+    this->insertRawData(ptrToData, ::std::strlen(ptrToData));
+    this->insert<::std::uint16_t>(::std::strlen(ptrToData));
+}
+
+
+
+// ------------------------------------------------------------------ extract
+// Extract any POD-like data from the end of the body
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::Message<MessageType>::extractRawMemory(
+    ::std::vector<::std::byte>& refToData,
+    const ::std::size_t size
+)
+{
+    refToData.resize(size);
+
+    m_header.bodySize -= size;
+
+    // extract data out of the end of the vector
+    ::std::memmove(refToData.data(), m_body.data() + m_header.bodySize, size);
+
+    // resize so he doesn't actually yeet my data
+    m_body.resize(m_header.bodySize);
+}
+
+template <
+    ::detail::isEnum MessageType
+> auto ::network::Message<MessageType>::extractRawMemory(
+    const ::std::size_t size
+) -> ::std::vector<::std::byte>
+{
+    ::std::vector<::std::byte> data;
+    this->extractRawMemory(data, size);
+    return data;
+}
+
+
+
 // ------------------------------------------------------------------ informations
 
 

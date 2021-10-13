@@ -40,14 +40,7 @@ public:
         MessageType&& messageType,
         ::network::TransmissionProtocol&& transmissionProtocol,
         auto&&... args
-    )
-        : m_header{
-            .packetType = ::std::forward<decltype(messageType)>(messageType),
-            .transmissionProtocol = ::std::forward<::network::TransmissionProtocol>(transmissionProtocol)
-        }
-    {
-        this->insert(::std::forward<decltype(args)>(args)...);
-    }
+    );
 
     ~Message();
 
@@ -57,96 +50,82 @@ public:
     // Insert any POD-like data into the body
 
     void insert(
-        ::detail::isStandardLayout auto&& data
-    )
-    {
-        // change size and alloc if needed
-        m_header.bodySize += sizeof(data);
-        m_body.resize(m_header.bodySize);
+        ::detail::isSendableData auto&& data
+    );
 
-        // insert data into the end of the vector
-        ::std::memmove(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
-    }
-
-    // Multiple insertions
     void insert(
-        ::detail::isStandardLayout auto&&... data
-    )
-    {
-        (this->insert(::std::forward<decltype(data)>(data)), ...);
-    }
+        const ::std::span<auto> data
+    );
+
+    void insert(
+        const ::std::string& data
+    );
+
+    void insert(
+        ::std::string_view data
+    );
+
+    void insert(
+        const char* ptrToData
+    );
+
+    void insertRawData(
+        auto* ptrToData,
+        const ::std::size_t size
+    );
+
+
+    void insertAll(
+        auto&&... args
+    );
+
+
 
     auto operator<<(
-        ::detail::isStandardLayout auto&& data
-    ) -> Message<MessageType>&
-    {
-        this->insert(::std::forward<decltype(data)>(data));
-        return *this;
-    }
+        auto&& data
+    ) -> Message<MessageType>&;
 
     auto operator<<(
-        const ::detail::isStandardLayout auto& data
-    ) -> Message<MessageType>&
-    {
-        decltype(data) copiedData{ data };
-        this->insert(::std::move(copiedData));
-        return *this;
-    }
+        const auto& data
+    ) -> Message<MessageType>&;
 
 
 
     // ------------------------------------------------------------------ extract
     // Extract any POD-like data from the end of the body
 
-    auto extract(
-        ::detail::isStandardLayout auto& data
-    ) -> Message<MessageType>&
-    {
-        m_header.bodySize -= sizeof(data);
+    void extractRawMemory(
+        ::std::vector<::std::byte>& refToData,
+        const ::std::size_t size
+    );
 
-        // extract data out of the end of the vector
-        ::std::memmove(&data, m_body.data() + m_header.bodySize, sizeof(data));
+    auto extractRawMemory(
+        const ::std::size_t size
+    ) -> ::std::vector<::std::byte>;
 
-        // resize so he doesn't actually yeet my data
-        m_body.resize(m_header.bodySize);
+    void extract(
+        ::detail::isSendableData auto& data
+    );
 
-        return *this;
-    }
+    void extract(
+        ::std::string& data
+    );
 
     template <
-        ::detail::isStandardLayout DataType
+        typename DataType
     > auto extract()
-        -> DataType
-    {
-        DataType data;
-
-        m_header.bodySize -= sizeof(data);
-
-        // extract data out of the end of the vector
-        ::std::memmove(&data, m_body.data() + m_header.bodySize, sizeof(data));
-
-        // resize so he doesn't actually yeet my data
-        m_body.resize(m_header.bodySize);
-
-        return data;
-    }
+        -> DataType;
 
     auto operator>>(
-        ::detail::isStandardLayout auto& data
-    ) -> Message<MessageType>&
-    {
-        return this->extract(data);
-    }
+        auto& data
+    ) -> Message<MessageType>&;
 
 
 
     // ------------------------------------------------------------------ informations
 
     [[ nodiscard ]] constexpr static inline auto getHeaderSize()
-        -> ::std::size_t
-    {
-        return sizeof(Message<MessageType>::Header);
-    }
+        -> ::std::size_t;
 
     [[ nodiscard ]] auto getBodySize() const
         -> ::std::size_t;
@@ -212,3 +191,5 @@ private:
 
 
 } // namespace network
+
+#include <Network/Message.impl.hpp>

@@ -65,7 +65,7 @@ public:
 
 private:
 
-    Id::Type m_value;
+    Id::Type m_value{ 0 };
 
 };
 

@@ -3,9 +3,7 @@
 // ------------------------------------------------------------------ *structors
 
 // default value is 0
-constexpr ::detail::Id::Id()
-    : m_value{ 0 }
-{}
+constexpr ::detail::Id::Id() = default;
 
 constexpr ::detail::Id::Id(
     ::std::integral auto baseValue
