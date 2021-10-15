@@ -2,7 +2,7 @@
 
 #include <Network/Message.hpp>
 
-namespace network { template <::detail::isEnum MessageType> class Connection; }
+namespace network { template <::detail::isEnum MessageType> class TcpConnection; }
 
 
 
@@ -22,7 +22,7 @@ public:
 
     OwnedMessage(
         ::network::Message<MessageType> message,
-        ::std::shared_ptr<::network::Connection<MessageType>> remote
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> remote
     );
 
     ~OwnedMessage();
@@ -32,13 +32,13 @@ public:
     // ------------------------------------------------------------------ informations
 
     auto getRemote() const
-        -> ::std::shared_ptr<::network::Connection<MessageType>>;
+        -> ::std::shared_ptr<::network::TcpConnection<MessageType>>;
 
 
 
 private:
 
-    ::std::shared_ptr<::network::Connection<MessageType>> m_remote{ nullptr };
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> m_remote{ nullptr };
 
 };
 

@@ -19,7 +19,7 @@ public:
 
     struct Header {
         MessageType packetType;
-        ::network::TransmissionProtocol transmissionProtocol;
+        ::network::TransmissionProtocol transmissionProtocol{ TransmissionProtocol::unspecified };
         ::std::uint16_t bodySize{ 0 };
     };
 
@@ -32,13 +32,11 @@ public:
     Message();
 
     Message(
-        MessageType&& messageType,
-        ::network::TransmissionProtocol&& transmissionProtocol
+        MessageType&& messageType
     );
 
     Message(
         MessageType&& messageType,
-        ::network::TransmissionProtocol&& transmissionProtocol,
         auto&&... args
     );
 
@@ -132,6 +130,15 @@ public:
 
     [[ nodiscard ]] auto getSize() const
         -> ::std::size_t;
+
+    template <
+        typename... Types
+    > [[ nodiscard ]] auto hasEnoughSizeFor() const
+        -> bool;
+
+    void setTransmissionProtocol(
+        ::network::TransmissionProtocol protocol
+    );
 
     [[ nodiscard ]] auto getTransmissionProtocol() const
         -> ::network::TransmissionProtocol;

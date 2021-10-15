@@ -2,7 +2,7 @@
 
 #include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
-#include <Network/Connection.hpp>
+#include <Network/TcpConnection.hpp>
 #include <Network/MessageType.hpp>
 
 
@@ -33,6 +33,8 @@ public:
     );
 
     virtual ~ANode() = 0;
+
+    void stopThread();
 
 
 
@@ -73,7 +75,7 @@ public:
 
     // handle the disconnection
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
 
@@ -81,32 +83,19 @@ public:
     // after receiving
     virtual void onTcpReceive(
         ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
     virtual void onUdpReceive(
         ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
     // returns true meaning the message is already handled
     virtual auto defaultReceiveBehaviour(
         ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     ) -> bool = 0;
-
-
-
-    // before sending
-    virtual void onTcpSend(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
-    );
-
-    virtual void onUdpSend(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
-    );
 
 
 
@@ -115,12 +104,12 @@ public:
     // client: is denided
 
     virtual void onConnectionDenial(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
     // TODO: ban list
     virtual void onIdentificationDenial(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
 

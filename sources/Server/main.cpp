@@ -11,7 +11,7 @@ int main(int argc, char **argv)
             std::cerr << "Usage: client <host>" << std::endl;
             return EXIT_FAILURE;
         }
-        ::ServerExample server{ 60000 };
+        ::ServerExample server{ static_cast<::std::uint16_t>(::std::atoi(argv[1])) };
         if (!server.start()) {
             return EXIT_FAILURE;
         }
@@ -27,12 +27,11 @@ int main(int argc, char **argv)
                 }
             }
         };
-
         while (server.isRunning()) {
             server.blockingPullIncommingMessages();
         }
-        thread.join();
 
+        thread.join();
         return EXIT_SUCCESS;
 
     } catch (const ::std::exception& e) {

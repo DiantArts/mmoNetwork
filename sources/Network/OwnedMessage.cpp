@@ -16,7 +16,7 @@ template <
     ::detail::isEnum MessageType
 > ::network::OwnedMessage<MessageType>::OwnedMessage(
     ::network::Message<MessageType> message,
-    ::std::shared_ptr<::network::Connection<MessageType>> remote
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> remote
 )
     : ::network::Message<MessageType>{ ::std::move(message) }
     , m_remote{ remote }
@@ -33,7 +33,7 @@ template <
 template <
     ::detail::isEnum MessageType
 > auto ::network::OwnedMessage<MessageType>::getRemote() const
-    -> ::std::shared_ptr<::network::Connection<MessageType>>
+    -> ::std::shared_ptr<::network::TcpConnection<MessageType>>
 {
     return m_remote;
 }

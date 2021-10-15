@@ -3,6 +3,10 @@
 
 
 
+#if ENABLE_ENCRYPTION
+
+
+
 // ------------------------------------------------------------------ *structors
 
 ::security::Cipher::Cipher()
@@ -116,3 +120,7 @@ auto ::security::Cipher::decrypt(
     }
     return decrypted;
 }
+
+
+
+#endif // ENABLE_ENCRYPTION

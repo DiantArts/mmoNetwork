@@ -9,12 +9,16 @@ namespace network {
 enum class MessageType : uint8_t
 {
     error = 0,
-    identificationAccepted, // contains udp port number
+    invalidTarget,
+    identificationAccepted,
     identificationDenied,
-    ping,
-    message,
+    ping, // TODO imlement
+    message, // TODO imlement
     messageAll,
-    startCall
+    startCall,
+    incommingCall,
+    acceptCall,
+    refuseCall,
 };
 
 

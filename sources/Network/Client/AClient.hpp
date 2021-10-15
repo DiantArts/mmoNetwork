@@ -1,11 +1,7 @@
 #pragma once
 
-#include <Network/Connection.hpp>
-#include <Network/MessageType.hpp>
-#include <Detail/Queue.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
 #include <Network/ANode.hpp>
+#include <Network/UdpConnection.hpp>
 
 
 
@@ -31,81 +27,107 @@ public:
 
     // ------------------------------------------------------------------ connection
 
-    [[ nodiscard ]] auto connect(
-        const ::std::string& host,
-        ::std::uint16_t port
-    ) -> bool;
-
     void disconnect();
-
-    void stop();
 
     [[ nodiscard ]] auto isConnected()
         -> bool;
 
+    [[ nodiscard ]] auto getUdpPort()
+        -> ::std::uint16_t;
 
 
-    // ------------------------------------------------------------------ async - tcpOut
 
-    void tcpSend(
+    // ------------------------------------------------------------------ server
+
+    [[ nodiscard ]] auto connectToServer(
+        const ::std::string& host,
+        ::std::uint16_t port
+    ) -> bool;
+
+    void disconnectFromServer();
+
+    void sendToServer(
         ::network::Message<MessageType>& message
     );
 
-    void tcpSend(
+    void sendToServer(
         ::network::Message<MessageType>&& message
     );
 
     // construct and tcpSend
-    void tcpSend(
+    void sendToServer(
         MessageType messageType,
         auto&&... args
     )
     {
-        m_connection->tcpSend(
+        m_connectionToServer->send(
             ::std::forward<decltype(messageType)>(messageType),
             ::std::forward<decltype(args)>(args)...
         );
     }
 
 
+    [[ nodiscard ]] auto isConnectedToServer()
+        -> bool;
 
-    // ------------------------------------------------------------------ async - udpOut
 
-    void udpSend(
-        ::network::Message<MessageType>& message
-    );
 
-    void udpSend(
+    // ------------------------------------------------------------------ peer
+
+    void openUdpConnection();
+
+    auto targetPeer(
+        const ::std::string& host,
+        ::std::uint16_t port
+    ) -> bool;
+
+    void closePeerConnection();
+
+    void sendToPeer(
         ::network::Message<MessageType>&& message
     );
 
-    // construct and udpSend
-    void udpSend(
+    // construct and tcpSend
+    void sendToPeer(
         MessageType messageType,
         auto&&... args
     )
     {
-        m_connection->udpSend(
+        m_connectionToPeer->send(
             ::std::forward<decltype(messageType)>(messageType),
             ::std::forward<decltype(args)>(args)...
         );
     }
 
 
+    [[ nodiscard ]] auto isConnectedToPeer()
+        -> bool;
 
-    // ------------------------------------------------------------------ receive behaviour
+
+
+    // ------------------------------------------------------------------ default behaviours
 
     virtual auto defaultReceiveBehaviour(
         ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     ) -> bool
         override final;
 
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+    ) override;
 
-private:
+    // handle the disconnection
+    virtual void onUdpDisconnect(
+        ::std::shared_ptr<::network::UdpConnection<MessageType>> connection
+    );
+
+
+protected:
 
     // hardware connection to the server
-    ::std::shared_ptr<::network::Connection<MessageType>> m_connection;
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> m_connectionToServer;
+    ::std::shared_ptr<::network::UdpConnection<MessageType>> m_connectionToPeer;
 
 };
 

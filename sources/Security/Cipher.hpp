@@ -4,6 +4,10 @@
 
 
 
+#if ENABLE_ENCRYPTION
+
+
+
 namespace security {
 
 
@@ -84,3 +88,7 @@ private:
 
 
 } // namespace security
+
+
+
+#endif // ENABLE_ENCRYPTION

@@ -6,7 +6,6 @@
 #include <Detail/Concepts.hpp>
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
-// #include <Network/Identifier.hpp>
 
 namespace network { template <::detail::isEnum MessageType> class ANode; }
 
@@ -18,21 +17,21 @@ namespace network {
 
 template <
     ::detail::isEnum MessageType
-> class Connection
-    : public ::std::enable_shared_from_this<Connection<MessageType>>
+> class TcpConnection
+    : public ::std::enable_shared_from_this<TcpConnection<MessageType>>
 {
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
-    Connection(
+    TcpConnection(
         ::network::ANode<MessageType>& owner,
-        ::boost::asio::ip::tcp::socket tcpSocket,
-        ::boost::asio::ip::udp::socket udpSocket
+        ::boost::asio::ip::tcp::socket socket
     );
 
-    ~Connection();
+    // doesnt call onDisconnect
+    ~TcpConnection();
 
 
 
@@ -42,25 +41,21 @@ public:
         ::detail::Id id
     ) -> bool;
 
-    void connectToServer(
+    void connect(
         const ::std::string& host,
-        ::std::uint16_t port
-    );
-
-    void targetServerUdpPort(
         ::std::uint16_t port
     );
 
     void disconnect();
 
-    auto isConnected() const
+    [[ nodiscard ]] auto isConnected() const
         -> bool;
 
 
 
-    // ------------------------------------------------------------------ async - tcpOut
+    // ------------------------------------------------------------------ async - out
 
-    void tcpSend(
+    void send(
         MessageType messageType,
         auto&&... args
     )
@@ -74,47 +69,16 @@ public:
             m_owner.getAsioContext(),
             [this, message]()
             {
-                auto wasOutQueueEmpty{ m_tcpMessagesOut.empty() };
-                m_tcpMessagesOut.push_back(::std::move(message));
+                auto wasOutQueueEmpty{ m_messagesOut.empty() };
+                m_messagesOut.push_back(::std::move(message));
                 if (m_isValid && wasOutQueueEmpty) {
-                    this->tcpWriteAwaitingMessages();
+                    this->writeAwaitingMessages();
                 }
             }
         );
     }
 
-    void tcpSend(
-        ::network::Message<MessageType> message
-    );
-
-
-
-    // ------------------------------------------------------------------ async - udpOut
-
-    void udpSend(
-        MessageType messageType,
-        auto&&... args
-    )
-    {
-        ::network::Message message{
-            ::std::forward<decltype(messageType)>(messageType),
-            ::network::TransmissionProtocol::udp,
-            ::std::forward<decltype(args)>(args)...
-        };
-        ::boost::asio::post(
-            m_owner.getAsioContext(),
-            [this, message]()
-            {
-                auto wasOutQueueEmpty{ m_udpMessagesOut.empty() };
-                m_udpMessagesOut.push_back(::std::move(message));
-                if (m_isValid && wasOutQueueEmpty) {
-                    this->udpWriteHeader();
-                }
-            }
-        );
-    }
-
-    void udpSend(
+    void send(
         ::network::Message<MessageType> message
     );
 
@@ -128,22 +92,28 @@ public:
     [[ nodiscard ]] auto getOwner() const
         -> const ::network::ANode<MessageType>&;
 
+    [[ nodiscard ]] auto getPort() const
+        -> ::std::uint16_t;
+
+    [[ nodiscard ]] auto getAddress() const
+        -> ::std::string;
+
 
 
 private:
 
-    // ------------------------------------------------------------------ async - tcpOut
+    // ------------------------------------------------------------------ async - out
 
     template <
         auto successCallback,
         auto failureHeaderCallback,
         auto failureBodyCallback
-    > void tcpSendMessage(
+    > void sendMessage(
         ::network::Message<MessageType> message
     )
     {
         ::boost::asio::async_write(
-            m_tcpSocket,
+            m_socket,
             ::boost::asio::buffer(message.getHeaderAddr(), message.getHeaderSize()),
             ::std::bind_front(
                 [this](
@@ -152,11 +122,15 @@ private:
                     const ::std::size_t length
                 ) {
                     if (errorCode) {
-                        failureHeaderCallback(::std::ref(*this), errorCode);
+                        if (errorCode == ::boost::asio::error::operation_aborted) {
+                            ::std::cerr << "[Connection:TCP] Operation canceled\n";
+                        } else {
+                            failureHeaderCallback(::std::ref(*this), errorCode);
+                        }
                     } else {
                         if (!message.isBodyEmpty()) {
                             ::boost::asio::async_write(
-                                m_tcpSocket,
+                                m_socket,
                                 ::boost::asio::buffer(message.getBodyAddr(), message.getBodySize()),
                                 ::std::bind_front(
                                     [this](
@@ -165,7 +139,11 @@ private:
                                         const ::std::size_t length
                                     ) {
                                         if (errorCode) {
-                                            failureBodyCallback(::std::ref(*this), errorCode);
+                                            if (errorCode == ::boost::asio::error::operation_aborted) {
+                                                ::std::cerr << "[Connection:TCP] Operation canceled\n";
+                                            } else {
+                                                failureBodyCallback(::std::ref(*this), errorCode);
+                                            }
                                         } else {
                                             successCallback(::std::ref(*this));
                                         }
@@ -187,13 +165,13 @@ private:
         typename Type,
         auto successCallback,
         auto failureCallback
-    > void tcpSendRawData(
+    > void sendRawData(
         auto&&... args
     )
     {
         auto pointerToData{ new Type{ ::std::forward<decltype(args)>(args)... } };
         ::boost::asio::async_write(
-            m_tcpSocket,
+            m_socket,
             ::boost::asio::buffer(pointerToData, sizeof(Type)),
             [this, pointerToData](
                 const boost::system::error_code& errorCode,
@@ -212,13 +190,13 @@ private:
     template <
         auto successCallback,
         auto failureCallback
-    > void tcpSendRawData(
+    > void sendRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
     )
     {
         ::boost::asio::async_write(
-            m_tcpSocket,
+            m_socket,
             ::boost::asio::buffer(pointerToData, dataSize),
             [this](
                 const boost::system::error_code& errorCode,
@@ -233,51 +211,47 @@ private:
         );
     }
 
-    void tcpWriteAwaitingMessages();
+    void writeAwaitingMessages();
 
 
 
-    // ------------------------------------------------------------------ async - udpOut
-
-    void udpWriteHeader(
-        ::std::size_t bytesAlreadySent = 0
-    );
-
-    void udpWriteBody(
-        ::std::size_t bytesAlreadySent = 0
-    );
-
-
-
-    // ------------------------------------------------------------------ async - tcpIn
+    // ------------------------------------------------------------------ async - in
 
     template <
         auto successCallback,
         auto failureHeaderCallback,
         auto failureBodyCallback
-    > void tcpReceiveMessage()
+    > void receiveMessage()
     {
         ::boost::asio::async_read(
-            m_tcpSocket,
-            ::boost::asio::buffer(m_tcpBufferIn.getHeaderAddr(), m_tcpBufferIn.getHeaderSize()),
+            m_socket,
+            ::boost::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getHeaderSize()),
             [this](
                 const boost::system::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    failureHeaderCallback(::std::ref(*this), errorCode);
+                    if (errorCode == ::boost::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:TCP] Operation canceled\n";
+                    } else {
+                        failureHeaderCallback(::std::ref(*this), errorCode);
+                    }
                 } else {
-                    if (!m_tcpBufferIn.isBodyEmpty()) {
-                        m_tcpBufferIn.updateBodySize();
+                    if (!m_bufferIn.isBodyEmpty()) {
+                        m_bufferIn.updateBodySize();
                         ::boost::asio::async_read(
-                            m_tcpSocket,
-                            ::boost::asio::buffer(m_tcpBufferIn.getBodyAddr(), m_tcpBufferIn.getBodySize()),
+                            m_socket,
+                            ::boost::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
                             [this](
                                 const boost::system::error_code& errorCode,
                                 const ::std::size_t length
                             ) {
                                 if (errorCode) {
-                                    failureBodyCallback(::std::ref(*this), errorCode);
+                                    if (errorCode == ::boost::asio::error::operation_aborted) {
+                                        ::std::cerr << "[Connection:TCP] Operation canceled\n";
+                                    } else {
+                                        failureBodyCallback(::std::ref(*this), errorCode);
+                                    }
                                 } else {
                                     successCallback(::std::ref(*this));
                                 }
@@ -295,11 +269,11 @@ private:
         typename Type,
         auto successCallback,
         auto failureCallback
-    > void tcpReceiveRawData()
+    > void receiveRawData()
     {
         auto pointerToData{ new ::std::array<::std::byte, sizeof(Type)> };
         ::boost::asio::async_read(
-            m_tcpSocket,
+            m_socket,
             ::boost::asio::buffer(pointerToData->data(), sizeof(Type)),
             [this, pointerToData](
                 const boost::system::error_code& errorCode,
@@ -318,13 +292,13 @@ private:
     template <
         auto successCallback,
         auto failureCallback
-    > void tcpReceiveToRawData(
+    > void receiveToRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
     )
     {
         ::boost::asio::async_read(
-            m_tcpSocket,
+            m_socket,
             ::boost::asio::buffer(pointerToData, dataSize),
             [this, pointerToData](
                 const boost::system::error_code& errorCode,
@@ -341,24 +315,9 @@ private:
 
     void startReadMessage();
 
-    void tcpReadBody();
+    void readBody();
 
-    void tcpTransferBufferToInQueue();
-
-
-
-
-    // ------------------------------------------------------------------ async - udpIn
-
-    void udpReadHeader(
-        ::std::size_t bytesAlreadyRead = 0
-    );
-
-    void udpReadBody(
-        ::std::size_t bytesAlreadyRead = 0
-    );
-
-    void udpTransferBufferToInQueue();
+    void transferBufferToInQueue();
 
 
 
@@ -379,6 +338,8 @@ private:
 
 
 
+#if ENABLE_ENCRYPTION
+
     void serverHandshake();
 
     void serverSendHandshake(
@@ -391,12 +352,6 @@ private:
             ::std::byte,
             ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
         >* handshakeReceivedPtr
-    );
-
-    void sendIdentificationAcceptanceHeader();
-
-    void sendIdentificationAcceptanceBody(
-        ::network::Message<MessageType>* message
     );
 
 
@@ -417,9 +372,13 @@ private:
         >* handshakeReceivedPtr
     );
 
-    void clientWaitIdentificationAcceptanceHeader();
+#endif // ENABLE_ENCRYPTION
 
-    void clientWaitIdentificationAcceptanceBody();
+
+
+    void sendIdentificationAcceptance();
+
+    void clientWaitIdentificationAcceptance();
 
 
 
@@ -437,17 +396,14 @@ private:
     ::network::ANode<MessageType>& m_owner;
 
     // tcp
-    ::boost::asio::ip::tcp::socket m_tcpSocket;
-    ::network::Message<MessageType> m_tcpBufferIn;
-    ::detail::Queue<::network::Message<MessageType>> m_tcpMessagesOut;
+    ::boost::asio::ip::tcp::socket m_socket;
+    ::network::Message<MessageType> m_bufferIn;
+    ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
 
-    // udp
-    ::boost::asio::ip::udp::socket m_udpSocket;
-    ::network::Message<MessageType> m_udpBufferIn;
-    ::detail::Queue<::network::Message<MessageType>> m_udpMessagesOut;
-
-    // security
+    // security module
+#if ENABLE_ENCRYPTION
     ::security::Cipher m_cipher;
+#endif // ENABLE_ENCRYPTION
 
     ::detail::Id m_id{ 1 };
 

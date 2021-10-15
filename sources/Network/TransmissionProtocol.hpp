@@ -8,7 +8,8 @@ namespace network {
 
 enum class TransmissionProtocol : uint8_t
 {
-    udp = 1,
+    unspecified = 0,
+    udp,
     tcp
 };
 

@@ -8,12 +8,10 @@ template <
     ::detail::isEnum MessageType
 > ::network::Message<MessageType>::Message(
     MessageType&& messageType,
-    ::network::TransmissionProtocol&& transmissionProtocol,
     auto&&... args
 )
     : m_header{
-        .packetType = ::std::forward<decltype(messageType)>(messageType),
-        .transmissionProtocol = ::std::forward<::network::TransmissionProtocol>(transmissionProtocol)
+        .packetType = ::std::forward<decltype(messageType)>(messageType)
     }
 {
     this->insertAll(::std::forward<decltype(args)>(args)...);
@@ -159,4 +157,15 @@ template <
     -> ::std::size_t
 {
     return sizeof(Message<MessageType>::Header);
+}
+
+template <
+    ::detail::isEnum MessageType
+> template <
+    typename... Types
+> [[ nodiscard ]] auto ::network::Message<MessageType>::hasEnoughSizeFor() const
+    -> bool
+{
+    ::std::size_t size{ (sizeof(Types) + ...) };
+    return m_header.bodySize >= size;
 }

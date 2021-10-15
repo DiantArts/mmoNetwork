@@ -44,10 +44,7 @@ template <
 {
     try {
         this->startReceivingConnections();
-
-        // start the routine
         this->getThreadContext() = ::std::thread([this](){ this->getAsioContext().run(); });
-
     } catch (::std::exception& e) {
         ::std::cerr << "[ERROR:Server] " << e.what() << ".\n";
         return false;
@@ -61,12 +58,7 @@ template <
 > void ::network::AServer<MessageType>::stop()
 {
     if (this->isRunning()) {
-        // stop everything running in parallele
-        this->getAsioContext().stop();
-        if(this->getThreadContext().joinable()) {
-            this->getThreadContext().join();
-        }
-
+        this->stopThread();
         this->getIncommingMessages().notify();
         ::std::cout << "[Server] Stopped" << '\n';
     }
@@ -96,17 +88,13 @@ template <
         ) {
             if (!errorCode) {
                 ::std::cout << "[Server] New incomming connection: " << socket.remote_endpoint() << ".\n";
-                auto newConnection{ ::std::make_shared<::network::Connection<MessageType>>(
+                auto newConnection{ ::std::make_shared<::network::TcpConnection<MessageType>>(
                     *this,
-                    ::std::move(socket),
-                    ::boost::asio::ip::udp::socket{
-                        this->getAsioContext(),
-                        ::boost::asio::ip::udp::endpoint(::boost::asio::ip::udp::v4(), 0)
-                    }
+                    ::std::move(socket)
                 ) };
                 if (newConnection->connectToClient(++m_idCounter)) {
                     m_incommingConnections.push_back(::std::move(newConnection));
-                    ::std::cout << '[' << m_incommingConnections.back()->getId()
+                    ::std::cout << "[Server:TCP:" << m_incommingConnections.back()->getId()
                         << "] Connection started.\n";
                 } else {
                     ::std::cerr << "[ERROR:Server] Connection failed.\n";
@@ -151,78 +139,26 @@ template <
 
 
 
-// ------------------------------------------------------------------ async - autoProtocol
+// ------------------------------------------------------------------ async - out
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::AServer<MessageType>::send(
+    ::network::Message<MessageType>& message,
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> client
+)
+{
+    client->send(message);
+}
 
 template <
     ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::send(
     ::network::Message<MessageType>&& message,
-    ::std::shared_ptr<::network::Connection<MessageType>>&& client
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> client
 )
 {
-    if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
-        this->tcpSend(
-            ::std::forward<decltype(message)>(message),
-            ::std::forward<decltype(client)>(client)
-        );
-    } else {
-        this->udpSend(
-            ::std::forward<decltype(message)>(message),
-            ::std::forward<decltype(client)>(client)
-        );
-    }
-}
-
-
-
-// ------------------------------------------------------------------ async - tcpOut
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::AServer<MessageType>::tcpSend(
-    ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> client
-)
-{
-    this->onTcpSend(message, client);
-    client->tcpSend(message);
-}
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::AServer<MessageType>::tcpSend(
-    ::network::Message<MessageType>&& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> client
-)
-{
-    this->onTcpSend(message, client);
-    client->tcpSend(::std::move(message));
-}
-
-
-
-// ------------------------------------------------------------------ async - udpOut
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::AServer<MessageType>::udpSend(
-    ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> client
-)
-{
-    this->onUdpSend(message, client);
-    client->udpSend(message);
-}
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::AServer<MessageType>::udpSend(
-    ::network::Message<MessageType>&& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> client
-)
-{
-    this->onUdpSend(message, client);
-    client->udpSend(::std::move(message));
+    client->send(::std::move(message));
 }
 
 
@@ -233,12 +169,12 @@ template <
     ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::defaultReceiveBehaviour(
     ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 ) -> bool
 {
     switch (message.getType()) {
     case MessageType::ping:
-        connection->tcpSend(message);
+        connection->send(message);
         break;
     default:
         return false;
@@ -253,7 +189,7 @@ template <
 template <
     ::detail::isEnum MessageType
 > void ::network::AServer<MessageType>::onDisconnect(
-    ::std::shared_ptr<::network::Connection<MessageType>> disconnectedConnection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> disconnectedConnection
 )
 {
     ::std::cout << '[' << disconnectedConnection->getId() << "] Disconnected.\n";
@@ -262,7 +198,7 @@ template <
         [
             disconnectedConnection
         ](
-            const ::std::shared_ptr<::network::Connection<MessageType>>& connection
+            const ::std::shared_ptr<::network::TcpConnection<MessageType>>& connection
         ){
             return connection == disconnectedConnection;
         }
@@ -273,7 +209,7 @@ template <
 template <
     ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::onClientConnect(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 ) -> bool
 {
     return true;
@@ -282,8 +218,24 @@ template <
 template <
     ::detail::isEnum MessageType
 > auto ::network::AServer<MessageType>::onClientIdentificate(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 ) -> bool
 {
     return true;
+}
+
+
+
+// ------------------------------------------------------------------ other
+
+template <
+    ::detail::isEnum MessageType
+> [[ nodiscard ]] auto ::network::AServer<MessageType>::getConnection(
+    ::detail::Id id
+) -> ::std::shared_ptr<::network::TcpConnection<MessageType>>
+{
+    return *::std::ranges::find_if(
+        m_connections,
+        [id](const auto& connection){ return connection->getId() == id; }
+    );
 }

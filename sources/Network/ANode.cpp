@@ -22,7 +22,20 @@ template <
 
 template <
     ::detail::isEnum MessageType
-> ::network::ANode<MessageType>::~ANode() = default;
+> ::network::ANode<MessageType>::~ANode()
+{
+    this->stopThread();
+}
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::ANode<MessageType>::stopThread()
+{
+    m_asioContext.stop();
+    if(m_threadContext.joinable()) {
+        m_threadContext.join();
+    }
+}
 
 
 
@@ -95,14 +108,13 @@ template <
 
 // ------------------------------------------------------------------ user methods
 
-// before the actual disconnection
 template <
     ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onDisconnect(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 )
 {
-    ::std::cout << "[" << connection->getId() << "] Disconnected\n";
+    ::std::cout << "[ANode:TCP] OnDisconnect.\n";
 }
 
 
@@ -112,7 +124,7 @@ template <
     ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onTcpReceive(
     ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 )
 {}
 
@@ -120,25 +132,7 @@ template <
     ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onUdpReceive(
     ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
-)
-{}
-
-
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::ANode<MessageType>::onTcpSend(
-    ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
-)
-{}
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::ANode<MessageType>::onUdpSend(
-    ::network::Message<MessageType>& message,
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 )
 {}
 
@@ -149,16 +143,16 @@ template <
 template <
     ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onConnectionDenial(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 )
 {}
 
 template <
     ::detail::isEnum MessageType
 > void ::network::ANode<MessageType>::onIdentificationDenial(
-    ::std::shared_ptr<::network::Connection<MessageType>> connection
+    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
 )
 {
     ::std::cerr << "[" << connection->getId() << "] Identification denied\n";
-    connection->tcpSend(MessageType::identificationDenied);
+    connection->send(MessageType::identificationDenied);
 }

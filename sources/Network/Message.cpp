@@ -19,12 +19,10 @@ template <
 template <
     ::detail::isEnum MessageType
 > ::network::Message<MessageType>::Message(
-    MessageType&& messageType,
-    ::network::TransmissionProtocol&& transmissionProtocol
+    MessageType&& messageType
 )
     : m_header{
-        .packetType = ::std::forward<decltype(messageType)>(messageType),
-        .transmissionProtocol = ::std::forward<::network::TransmissionProtocol>(transmissionProtocol)
+        .packetType = ::std::forward<decltype(messageType)>(messageType)
     }
 {}
 
@@ -122,6 +120,14 @@ template <
     return this->getHeaderSize() + this->getBodySize();
 }
 
+template <
+    ::detail::isEnum MessageType
+> void ::network::Message<MessageType>::setTransmissionProtocol(
+    ::network::TransmissionProtocol protocol
+)
+{
+    m_header.transmissionProtocol = protocol;
+}
 
 template <
     ::detail::isEnum MessageType

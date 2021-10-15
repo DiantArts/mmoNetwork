@@ -1,8 +1,6 @@
 #pragma once
 
 #include <Network/Server/AServer.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
 
 
 
@@ -32,7 +30,7 @@ private:
 
     // refuses the connection by returning false
     virtual auto onClientConnect(
-        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<::network::MessageType>> connection
     ) -> bool
         override
     {
@@ -42,12 +40,48 @@ private:
     // after receiving
     virtual void onTcpReceive(
         ::network::Message<::network::MessageType>& message,
-        ::std::shared_ptr<::network::Connection<::network::MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<::network::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
-        case ::network::MessageType::messageAll: {
-            ::std::cout << "[" << connection->getId() << "]: Message All\n";
+        case ::network::MessageType::startCall: {
+            ::detail::Id targetId;
+            message >> targetId;
+            ::std::cout << "[" << connection->getId() << "] start call with [" << targetId << "].\n";
+            message.setType(::network::MessageType::incommingCall);
+            message << connection->getAddress() << connection->getId();
+            try {
+                this->getConnection(targetId)->send(message);
+            } catch (...) {
+                connection->send(::network::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+            }
+            break;
+        } case ::network::MessageType::acceptCall: {
+            ::detail::Id targetId;
+            message >> targetId;
+            ::std::cout << "[" << connection->getId() << "] accepted [" << targetId << "]'s call.\n";
+            message << connection->getAddress();
+            try {
+                this->getConnection(targetId)->send(message);
+            } catch (...) {
+                connection->send(::network::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+            }
+            break;
+        } case ::network::MessageType::refuseCall: {
+            ::detail::Id targetId;
+            message >> targetId;
+            ::std::cout << "[" << connection->getId() << "] refused [" << targetId << "]'s call.\n";
+            try {
+                this->getConnection(targetId)->send(message);
+            } catch (...) {
+                connection->send(::network::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+            }
+            break;
+        } case ::network::MessageType::messageAll: {
+            ::std::cout << "[" << connection->getId() << "] Message All.\n";
             this->sendToAllClients(
                 ::network::Message{
                     ::network::MessageType::message,

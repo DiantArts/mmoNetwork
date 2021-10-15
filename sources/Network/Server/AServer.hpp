@@ -1,9 +1,5 @@
 #pragma once
 
-#include <Detail/Id.hpp>
-#include <Detail/Concepts.hpp>
-#include <Network/Connection.hpp>
-#include <Network/MessageType.hpp>
 #include <Network/ANode.hpp>
 
 
@@ -54,170 +50,58 @@ public:
 
 
 
-    // ------------------------------------------------------------------ async - autoProtocol
+    // ------------------------------------------------------------------ async - out
 
     void send(
-        ::network::Message<MessageType>&& message,
-        ::std::shared_ptr<::network::Connection<MessageType>>&& client
+        ::network::Message<MessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> client
     );
 
     void send(
         ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... clients
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> client
+    );
+
+    void send(
+        ::network::Message<MessageType>& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... clients
     )
     {
-        if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
-            this->tcpSend(
-                ::std::forward<decltype(message)>(message),
-                ::std::forward<decltype(clients)>(clients)...
-            );
-        } else {
-            this->udpSend(
-                message,
-                ::std::forward<decltype(message)>(message),
-                ::std::forward<decltype(clients)>(clients)...
-            );
+        for (auto& client : {clients...}) {
+            client->send(message);
+        }
+    }
+
+    void send(
+        ::network::Message<MessageType>&& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... clients
+    )
+    {
+        for (auto& client : {clients...}) {
+            client->send(::std::move(message));
+        }
+    }
+
+    void sendToAllClients(
+        ::network::Message<MessageType>& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... ignoredClients
+    )
+    {
+        for (auto& client : m_connections) {
+            if (((client != ignoredClients) && ...)) {
+                client->send(message);
+            }
         }
     }
 
     void sendToAllClients(
         ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto&&... ignoredClients
-    )
-    {
-        if (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp) {
-            this->tcpSendToAllClients(
-                ::std::forward<decltype(message)>(message),
-                ::std::forward<decltype(ignoredClients)>(ignoredClients)...
-            );
-        } else {
-            this->udpSendToAllClients(
-                ::std::forward<decltype(message)>(message),
-                ::std::forward<decltype(ignoredClients)>(ignoredClients)...
-            );
-        }
-    }
-
-
-
-    // ------------------------------------------------------------------ async - tcpOut
-
-    void tcpSend(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> client
-    );
-
-    void tcpSend(
-        ::network::Message<MessageType>&& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> client
-    );
-
-    void tcpSend(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
-    )
-    {
-        for (auto& client : {clients...}) {
-            this->onTcpSend(message, client);
-            client->tcpSend(message);
-        }
-    }
-
-    void tcpSend(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
-    )
-    {
-        for (auto& client : {clients...}) {
-            this->onTcpSend(message, client);
-            client->tcpSend(::std::move(message));
-        }
-    }
-
-    void tcpSendToAllClients(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
             if (((client != ignoredClients) && ...)) {
-                this->onTcpSend(message, client);
-                client->tcpSend(message);
-            }
-        }
-    }
-
-    void tcpSendToAllClients(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
-    )
-    {
-        for (auto& client : m_connections) {
-            if (((client != ignoredClients) && ...)) {
-                this->onTcpSend(message, client);
-                client->tcpSend(::std::move(message));
-            }
-        }
-    }
-
-
-
-    // ------------------------------------------------------------------ async - udpOut
-
-    void udpSend(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> client
-    );
-
-    void udpSend(
-        ::network::Message<MessageType>&& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> client
-    );
-
-    void udpSend(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
-    )
-    {
-        for (auto& client : {clients...}) {
-            this->onUdpSend(message, client);
-            client->udpSend(message);
-        }
-    }
-
-    void udpSend(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... clients
-    )
-    {
-        for (auto& client : {clients...}) {
-            this->onUdpSend(message, client);
-            client->udpSend(::std::move(message));
-        }
-    }
-
-    void udpSendToAllClients(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
-    )
-    {
-        for (auto& client : m_connections) {
-            if (((client != ignoredClients) && ...)) {
-                this->onUdpSend(message, client);
-                client->udpSend(message);
-            }
-        }
-    }
-
-    void udpSendToAllClients(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<MessageType>>> auto... ignoredClients
-    )
-    {
-        for (auto& client : m_connections) {
-            if (((client != ignoredClients) && ...)) {
-                this->onUdpSend(message, client);
-                client->udpSend(::std::move(message));
+                client->send(::std::move(message));
             }
         }
     }
@@ -228,7 +112,7 @@ public:
 
     virtual auto defaultReceiveBehaviour(
         ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     ) -> bool
         override final;
 
@@ -238,17 +122,17 @@ public:
 
     // handle the disconnection
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
 
     // refuses the connection by returning false
     virtual auto onClientConnect(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     ) -> bool;
 
     // refuses the identification by returning false
     [[ nodiscard ]] virtual auto onClientIdentificate(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     ) -> bool;
 
 
@@ -257,12 +141,16 @@ public:
 
     // needs inlinment for linkage pupruses
     inline void validateConnection(
-        ::std::shared_ptr<::network::Connection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     )
     {
         m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
         m_connections.push_back(::std::move(connection));
     }
+
+    [[ nodiscard ]] auto getConnection(
+        ::detail::Id id
+    ) -> ::std::shared_ptr<::network::TcpConnection<MessageType>>;
 
 
 
@@ -271,8 +159,8 @@ private:
     // hardware connection to the server
     ::boost::asio::ip::tcp::acceptor m_asioAcceptor;
 
-    ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_incommingConnections;
-    ::std::deque<::std::shared_ptr<::network::Connection<MessageType>>> m_connections;
+    ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_incommingConnections;
+    ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_connections;
 
     ::detail::Id m_idCounter{ 1 };
 

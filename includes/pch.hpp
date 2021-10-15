@@ -64,4 +64,8 @@ using ::std::chrono_literals::operator""ms;
 
 
 
+#define ENABLE_ENCRYPTION true
+
+
+
 #endif // ___INCLUDE_GUARD_INCLUDES_PCH_HPP___
