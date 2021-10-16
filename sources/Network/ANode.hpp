@@ -61,7 +61,7 @@ public:
     // ------------------------------------------------------------------ getter
 
     [[ nodiscard ]] auto getAsioContext()
-        -> ::boost::asio::io_context&;
+        -> ::asio::io_context&;
 
     [[ nodiscard ]] auto getThreadContext()
         -> ::std::thread&;
@@ -117,7 +117,7 @@ public:
 private:
 
     // context running on a seperate thread
-    ::boost::asio::io_context m_asioContext;
+    ::asio::io_context m_asioContext;
     ::std::thread m_threadContext;
 
     ::detail::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;

@@ -70,7 +70,7 @@ template <
     try {
         m_connectionToServer = ::std::make_shared<::network::TcpConnection<MessageType>>(
             *this,
-            ::boost::asio::ip::tcp::socket(this->getAsioContext())
+            ::asio::ip::tcp::socket(this->getAsioContext())
         );
         m_connectionToServer->connect(host, port);
         ::std::cout << "[Client:TCP:" << m_connectionToServer->getId()

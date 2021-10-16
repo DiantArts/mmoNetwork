@@ -19,7 +19,7 @@ template <
     ::detail::isEnum MessageType
 > ::network::TcpConnection<MessageType>::TcpConnection(
     ::network::ANode<MessageType>& owner,
-    ::boost::asio::ip::tcp::socket socket
+    ::asio::ip::tcp::socket socket
 )
     : m_owner{ owner }
     , m_socket{ ::std::move(socket) }
@@ -81,12 +81,12 @@ template <
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::client) {
         m_socket.async_connect(
-            ::boost::asio::ip::tcp::endpoint{ ::boost::asio::ip::address::from_string(host), port },
+            ::asio::ip::tcp::endpoint{ ::asio::ip::address::from_string(host), port },
             [this](
-                const boost::system::error_code& errorCode
+                const ::std::error_code& errorCode
             ) {
                 if (errorCode) {
-                    if (errorCode == ::boost::asio::error::operation_aborted) {
+                    if (errorCode == ::asio::error::operation_aborted) {
                         ::std::cerr << "[Connection:TCP] Operation canceled\n";
                     } else {
                         ::std::cerr << "[ERROR:TCP] Client failed to connect to the Server.\n";
@@ -135,7 +135,7 @@ template <
 )
 {
     // TODO ::std::move(message)
-    ::boost::asio::post(m_owner.getAsioContext(), ::std::bind_front(
+    ::asio::post(m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<MessageType> message
         )
@@ -203,11 +203,11 @@ template <
                 self.writeAwaitingMessages();
             }
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Write header failed: " << errorCode.message() << ".\n";
             self.disconnect();
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Write body failed: " << errorCode.message() << ".\n";
             self.disconnect();
         }
@@ -227,10 +227,10 @@ template <
             self.transferBufferToInQueue();
             self.startReadMessage();
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
-            if (errorCode == ::boost::asio::error::operation_aborted) {
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
+            if (errorCode == ::asio::error::operation_aborted) {
                 ::std::cerr << "[Connection:TCP] Operation canceled\n";
-            } else if (errorCode == ::boost::asio::error::eof) {
+            } else if (errorCode == ::asio::error::eof) {
                 ::std::cerr << "[Connection:TCP:" << self.m_id << "] Node stopped the connection.\n";
                 self.disconnect();
             } else {
@@ -238,7 +238,7 @@ template <
                 self.disconnect();
             }
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Read body failed: " << errorCode.message() << ".\n";
             self.disconnect();
         }
@@ -270,7 +270,7 @@ template <
     // send public key
     this->sendRawData<
         [](...){},
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Write header failed: " << errorCode.message() << ".\n";
             self.disconnect();
         }
@@ -285,7 +285,7 @@ template <
                 self.clientHandshake();
             }
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Read public key failed: " << errorCode.message() << ".\n";
             self.disconnect();
         }
@@ -328,7 +328,7 @@ template <
 {
     this->sendRawData<
         [](...){},
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
             self.disconnect();
         }
@@ -345,19 +345,19 @@ template <
     >* receivedValue
 )
 {
-    ::boost::asio::async_read(
+    ::asio::async_read(
         m_socket,
-        ::boost::asio::buffer(receivedValue->data(), receivedValue->size()),
+        ::asio::buffer(receivedValue->data(), receivedValue->size()),
         [
             this,
             baseValue,
             receivedValue
         ](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:TCP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:TCP:" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
@@ -409,18 +409,18 @@ template <
     >* receivedValue
 )
 {
-    ::boost::asio::async_read(
+    ::asio::async_read(
         m_socket,
-        ::boost::asio::buffer(receivedValue->data(), receivedValue->size()),
+        ::asio::buffer(receivedValue->data(), receivedValue->size()),
         [
             this,
             receivedValue
         ](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:TCP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:TCP:" << m_id << "] Read handshake failed: " << errorCode.message() << ".\n";
@@ -446,15 +446,15 @@ template <
     auto handshakeResolved{ m_cipher.scramble(*reinterpret_cast<::std::uint64_t*>(handshakeReceived.data())) };
     auto handshakeResolvedEncrypted{ m_cipher.encrypt(&handshakeResolved, sizeof(handshakeResolved)) };
     delete receivedValue;
-    ::boost::asio::async_write(
+    ::asio::async_write(
         m_socket,
-        ::boost::asio::buffer(handshakeResolvedEncrypted.data(), handshakeResolvedEncrypted.size()),
+        ::asio::buffer(handshakeResolvedEncrypted.data(), handshakeResolvedEncrypted.size()),
         [this](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:TCP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:TCP:" << m_id << "] Write handshake failed: " << errorCode.message() << ".\n";
@@ -490,12 +490,12 @@ template <
                 .validateConnection(self.shared_from_this());
             self.startReadMessage();
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance header failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance body failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();
@@ -537,12 +537,12 @@ template <
                 self.disconnect();
             }
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion acceptance failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();
         },
-        [](::network::TcpConnection<MessageType>& self, const boost::system::error_code& errorCode){
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Iidentificaion acceptance failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();

@@ -20,7 +20,7 @@ template <
     : ::network::ANode<MessageType>{ ::network::ANode<MessageType>::Type::server }
     , m_asioAcceptor{
         this->getAsioContext(),
-        ::boost::asio::ip::tcp::endpoint{ ::boost::asio::ip::tcp::v4(), port }
+        ::asio::ip::tcp::endpoint{ ::asio::ip::tcp::v4(), port }
     }
 {
     ::std::cout << "[Server] Ready to listen port " << port << ".\n";
@@ -83,8 +83,8 @@ template <
 {
     m_asioAcceptor.async_accept(
         [this](
-            const boost::system::error_code& errorCode,
-            ::boost::asio::ip::tcp::socket socket
+            const ::std::error_code& errorCode,
+            ::asio::ip::tcp::socket socket
         ) {
             if (!errorCode) {
                 ::std::cout << "[Server] New incomming connection: " << socket.remote_endpoint() << ".\n";

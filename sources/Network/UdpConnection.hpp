@@ -59,7 +59,7 @@ public:
             ::network::TransmissionProtocol::udp,
             ::std::forward<decltype(args)>(args)...
         };
-        ::boost::asio::post(
+        ::asio::post(
             m_owner.getAsioContext(),
             [this, message]()
             {
@@ -123,7 +123,7 @@ private:
 
     ::network::AClient<MessageType>& m_owner;
 
-    ::boost::asio::ip::udp::socket m_socket;
+    ::asio::ip::udp::socket m_socket;
     ::network::Message<MessageType> m_bufferIn;
     ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
 

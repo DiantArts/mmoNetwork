@@ -27,7 +27,7 @@ public:
 
     TcpConnection(
         ::network::ANode<MessageType>& owner,
-        ::boost::asio::ip::tcp::socket socket
+        ::asio::ip::tcp::socket socket
     );
 
     // doesnt call onDisconnect
@@ -65,7 +65,7 @@ public:
             ::network::TransmissionProtocol::tcp,
             ::std::forward<decltype(args)>(args)...
         };
-        ::boost::asio::post(
+        ::asio::post(
             m_owner.getAsioContext(),
             [this, message]()
             {
@@ -112,34 +112,34 @@ private:
         ::network::Message<MessageType> message
     )
     {
-        ::boost::asio::async_write(
+        ::asio::async_write(
             m_socket,
-            ::boost::asio::buffer(message.getHeaderAddr(), message.getHeaderSize()),
+            ::asio::buffer(message.getHeaderAddr(), message.getHeaderSize()),
             ::std::bind_front(
                 [this](
                     ::network::Message<MessageType> message,
-                    const boost::system::error_code& errorCode,
+                    const ::std::error_code& errorCode,
                     const ::std::size_t length
                 ) {
                     if (errorCode) {
-                        if (errorCode == ::boost::asio::error::operation_aborted) {
+                        if (errorCode == ::asio::error::operation_aborted) {
                             ::std::cerr << "[Connection:TCP] Operation canceled\n";
                         } else {
                             failureHeaderCallback(::std::ref(*this), errorCode);
                         }
                     } else {
                         if (!message.isBodyEmpty()) {
-                            ::boost::asio::async_write(
+                            ::asio::async_write(
                                 m_socket,
-                                ::boost::asio::buffer(message.getBodyAddr(), message.getBodySize()),
+                                ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
                                 ::std::bind_front(
                                     [this](
                                         ::network::Message<MessageType> message,
-                                        const boost::system::error_code& errorCode,
+                                        const ::std::error_code& errorCode,
                                         const ::std::size_t length
                                     ) {
                                         if (errorCode) {
-                                            if (errorCode == ::boost::asio::error::operation_aborted) {
+                                            if (errorCode == ::asio::error::operation_aborted) {
                                                 ::std::cerr << "[Connection:TCP] Operation canceled\n";
                                             } else {
                                                 failureBodyCallback(::std::ref(*this), errorCode);
@@ -170,11 +170,11 @@ private:
     )
     {
         auto pointerToData{ new Type{ ::std::forward<decltype(args)>(args)... } };
-        ::boost::asio::async_write(
+        ::asio::async_write(
             m_socket,
-            ::boost::asio::buffer(pointerToData, sizeof(Type)),
+            ::asio::buffer(pointerToData, sizeof(Type)),
             [this, pointerToData](
-                const boost::system::error_code& errorCode,
+                const ::std::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
@@ -195,11 +195,11 @@ private:
         ::std::size_t dataSize
     )
     {
-        ::boost::asio::async_write(
+        ::asio::async_write(
             m_socket,
-            ::boost::asio::buffer(pointerToData, dataSize),
+            ::asio::buffer(pointerToData, dataSize),
             [this](
-                const boost::system::error_code& errorCode,
+                const ::std::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
@@ -223,15 +223,15 @@ private:
         auto failureBodyCallback
     > void receiveMessage()
     {
-        ::boost::asio::async_read(
+        ::asio::async_read(
             m_socket,
-            ::boost::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getHeaderSize()),
+            ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getHeaderSize()),
             [this](
-                const boost::system::error_code& errorCode,
+                const ::std::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
-                    if (errorCode == ::boost::asio::error::operation_aborted) {
+                    if (errorCode == ::asio::error::operation_aborted) {
                         ::std::cerr << "[Connection:TCP] Operation canceled\n";
                     } else {
                         failureHeaderCallback(::std::ref(*this), errorCode);
@@ -239,15 +239,15 @@ private:
                 } else {
                     if (!m_bufferIn.isBodyEmpty()) {
                         m_bufferIn.updateBodySize();
-                        ::boost::asio::async_read(
+                        ::asio::async_read(
                             m_socket,
-                            ::boost::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
+                            ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
                             [this](
-                                const boost::system::error_code& errorCode,
+                                const ::std::error_code& errorCode,
                                 const ::std::size_t length
                             ) {
                                 if (errorCode) {
-                                    if (errorCode == ::boost::asio::error::operation_aborted) {
+                                    if (errorCode == ::asio::error::operation_aborted) {
                                         ::std::cerr << "[Connection:TCP] Operation canceled\n";
                                     } else {
                                         failureBodyCallback(::std::ref(*this), errorCode);
@@ -272,11 +272,11 @@ private:
     > void receiveRawData()
     {
         auto pointerToData{ new ::std::array<::std::byte, sizeof(Type)> };
-        ::boost::asio::async_read(
+        ::asio::async_read(
             m_socket,
-            ::boost::asio::buffer(pointerToData->data(), sizeof(Type)),
+            ::asio::buffer(pointerToData->data(), sizeof(Type)),
             [this, pointerToData](
-                const boost::system::error_code& errorCode,
+                const ::std::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
@@ -297,11 +297,11 @@ private:
         ::std::size_t dataSize
     )
     {
-        ::boost::asio::async_read(
+        ::asio::async_read(
             m_socket,
-            ::boost::asio::buffer(pointerToData, dataSize),
+            ::asio::buffer(pointerToData, dataSize),
             [this, pointerToData](
-                const boost::system::error_code& errorCode,
+                const ::std::error_code& errorCode,
                 const ::std::size_t length
             ) {
                 if (errorCode) {
@@ -396,7 +396,7 @@ private:
     ::network::ANode<MessageType>& m_owner;
 
     // tcp
-    ::boost::asio::ip::tcp::socket m_socket;
+    ::asio::ip::tcp::socket m_socket;
     ::network::Message<MessageType> m_bufferIn;
     ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
 

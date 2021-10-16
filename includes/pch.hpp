@@ -52,15 +52,20 @@ using ::std::chrono_literals::operator""ms;
 
 
 
-#include <boost/array.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#define BOOST_BIND_GLOBAL_PLACEHOLDERS
-#include <boost/bind.hpp>
+// #include <boost/array.hpp>
+// #include <boost/enable_shared_from_this.hpp>
+// #define BOOST_BIND_GLOBAL_PLACEHOLDERS
+// #include <boost/bind.hpp>
+
+// #define ASIO_STANDALONE
+// #include <boost/asio.hpp>
+// #include <boost/asio/ts/buffer.hpp>
+// #include <boost/asio/ts/internet.hpp>
 
 #define ASIO_STANDALONE
-#include <boost/asio.hpp>
-#include <boost/asio/ts/buffer.hpp>
-#include <boost/asio/ts/internet.hpp>
+#include <asio.hpp>
+#include <asio/ts/buffer.hpp>
+#include <asio/ts/internet.hpp>
 
 
 

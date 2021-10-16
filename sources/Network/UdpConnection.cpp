@@ -19,8 +19,8 @@ template <
     : m_owner{ owner }
     , m_socket{ owner.getAsioContext() }
 {
-    m_socket.open(::boost::asio::ip::udp::v4());
-    m_socket.bind(boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0));
+    m_socket.open(::asio::ip::udp::v4());
+    m_socket.bind(::asio::ip::udp::endpoint(::asio::ip::udp::v4(), 0));
 }
 
 
@@ -47,12 +47,12 @@ template <
 )
 {
     m_socket.async_connect(
-        ::boost::asio::ip::udp::endpoint{ ::boost::asio::ip::address::from_string(host), port },
+        ::asio::ip::udp::endpoint{ ::asio::ip::address::from_string(host), port },
         [this](
-            const boost::system::error_code& errorCode
+            const ::std::error_code& errorCode
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Client failed to connect to the tcp Server.\n";
@@ -96,7 +96,7 @@ template <
     ::network::Message<MessageType>&& message
 )
 {
-    ::boost::asio::post(m_owner.getAsioContext(), ::std::bind_front(
+    ::asio::post(m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<MessageType> message
         )
@@ -151,16 +151,16 @@ template <
 )
 {
     m_socket.async_send(
-        ::boost::asio::buffer(
+        ::asio::buffer(
             m_messagesOut.front().getHeaderAddr() + bytesAlreadySent,
             m_messagesOut.front().getHeaderSize() - bytesAlreadySent
         ),
         [this, bytesAlreadySent](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Write header failed: " << errorCode.message() << ".\n";
@@ -189,16 +189,16 @@ template <
 )
 {
     m_socket.async_send(
-        ::boost::asio::buffer(
+        ::asio::buffer(
             m_messagesOut.front().getBodyAddr() + bytesAlreadySent,
             m_messagesOut.front().getBodySize() - bytesAlreadySent
         ),
         [this, bytesAlreadySent](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Write body failed: " << errorCode.message() << ".\n";
@@ -228,16 +228,16 @@ template <
 )
 {
     m_socket.async_receive(
-        ::boost::asio::buffer(
+        ::asio::buffer(
             m_bufferIn.getHeaderAddr() + bytesAlreadyRead,
             m_bufferIn.getHeaderSize() - bytesAlreadyRead
         ),
         [this, bytesAlreadyRead](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Read header failed: " << errorCode.message() << ".\n";
@@ -264,16 +264,16 @@ template <
 )
 {
     m_socket.async_receive(
-        ::boost::asio::buffer(
+        ::asio::buffer(
             m_bufferIn.getBodyAddr() + bytesAlreadyRead,
             m_bufferIn.getBodySize() - bytesAlreadyRead
         ),
         [this, bytesAlreadyRead](
-            const boost::system::error_code& errorCode,
+            const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
             if (errorCode) {
-                if (errorCode == ::boost::asio::error::operation_aborted) {
+                if (errorCode == ::asio::error::operation_aborted) {
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Read body failed: " << errorCode.message() << ".\n";

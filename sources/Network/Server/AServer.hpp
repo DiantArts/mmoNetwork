@@ -157,7 +157,7 @@ public:
 private:
 
     // hardware connection to the server
-    ::boost::asio::ip::tcp::acceptor m_asioAcceptor;
+    ::asio::ip::tcp::acceptor m_asioAcceptor;
 
     ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_incommingConnections;
     ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_connections;

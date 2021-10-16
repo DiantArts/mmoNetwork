@@ -76,7 +76,7 @@ inline::std::string str;
 namespace debuging {
 class check_time {
 public:
-    check_time(const::std::string file, const::std::string function, const int line)
+    check_time(const ::std::string file, const ::std::string function, const int line)
         : m_ClockStart(::std::chrono::high_resolution_clock::now())
         , m_File(file), m_Function(function), m_Line(line)
     {
@@ -114,7 +114,7 @@ private:
 namespace debuging {
 class check_time {
 public:
-    check_time(const::std::string file, const::std::string function, const int line)
+    check_time(const ::std::string file, const ::std::string function, const int line)
         : m_File(file), m_Function(function), m_Line(line)
     {
        ::std::lock_guard<std::recursive_mutex> debugClogLockGuard(debugClogMutex);

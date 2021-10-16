@@ -83,7 +83,7 @@ template <
 template <
     ::detail::isEnum MessageType
 > auto ::network::ANode<MessageType>::getAsioContext()
-    -> ::boost::asio::io_context&
+    -> ::asio::io_context&
 {
     return m_asioContext;
 }

@@ -8,7 +8,7 @@ int main(int argc, char **argv)
     try {
 
         if (argc != 2) {
-            std::cerr << "Usage: client <host>" << std::endl;
+            ::std::cerr << "Usage: client <host>" << ::std::endl;
             return EXIT_FAILURE;
         }
         ::ServerExample server{ static_cast<::std::uint16_t>(::std::atoi(argv[1])) };
