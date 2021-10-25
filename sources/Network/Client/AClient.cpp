@@ -42,7 +42,7 @@ template <
 
 template <
     ::detail::isEnum MessageType
-> auto ::network::AClient<MessageType>::isConnected()
+> auto ::network::AClient<MessageType>::isConnected() const
     -> bool
 {
     return this->isConnectedToServer() || this->isConnectedToPeer();
@@ -50,7 +50,7 @@ template <
 
 template <
     ::detail::isEnum MessageType
-> auto ::network::AClient<MessageType>::getUdpPort()
+> auto ::network::AClient<MessageType>::getUdpPort() const
     -> ::std::uint16_t
 {
     return m_connectionToPeer->getPort();
@@ -120,7 +120,7 @@ template <
 
 template <
     ::detail::isEnum MessageType
-> auto ::network::AClient<MessageType>::isConnectedToServer()
+> auto ::network::AClient<MessageType>::isConnectedToServer() const
     -> bool
 {
     return m_connectionToServer && m_connectionToServer->isConnected();
@@ -178,7 +178,7 @@ template <
 
 template <
     ::detail::isEnum MessageType
-> auto ::network::AClient<MessageType>::isConnectedToPeer()
+> auto ::network::AClient<MessageType>::isConnectedToPeer() const
     -> bool
 {
     return m_connectionToPeer && m_connectionToPeer->isOpen();

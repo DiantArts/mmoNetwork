@@ -205,25 +205,6 @@ template <
     );
 }
 
-// refuses the connection by returning false, when connection is done
-template <
-    ::detail::isEnum MessageType
-> auto ::network::AServer<MessageType>::onClientConnect(
-    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-) -> bool
-{
-    return true;
-}
-
-template <
-    ::detail::isEnum MessageType
-> auto ::network::AServer<MessageType>::onClientIdentificate(
-    ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-) -> bool
-{
-    return true;
-}
-
 
 
 // ------------------------------------------------------------------ other

@@ -50,10 +50,7 @@ template <
 {
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
         if (m_socket.is_open()) {
-            if (
-                dynamic_cast<::network::AServer<MessageType>&>(m_owner)
-                    .onClientConnect(this->shared_from_this())
-            ) {
+            if (m_owner.onConnect(this->shared_from_this())) {
                 m_id = id;
                 this->identificate();
                 return true;
@@ -94,7 +91,12 @@ template <
                     }
                 } else {
                     ::std::cout << "[Connection:TCP] Connection accepted." << ::std::endl;
-                    this->identificate();
+                    if (!m_owner.onConnect(this->shared_from_this())) {
+                        m_owner.onConnectionDenial(this->shared_from_this());
+                        this->disconnect();
+                    } else {
+                        this->identificate();
+                    }
                 }
             }
         );
@@ -292,7 +294,7 @@ template <
     >(m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize());
 #else // ENABLE_ENCRYPTION
     if (m_owner.getType() == ::network::ANode<MessageType>::Type::server) {
-        this->sendIdentificationAcceptance();
+        this->serverSendIdentificationAcceptance();
     } else {
         this->clientWaitIdentificationAcceptance();
     }
@@ -370,11 +372,8 @@ template <
                     )
                 };
                 if (decryptedValue == m_cipher.scramble(baseValue)) {
-                    if (
-                        dynamic_cast<::network::AServer<MessageType>&>(m_owner)
-                            .onClientIdentificate(this->shared_from_this())
-                    ) {
-                        this->sendIdentificationAcceptance();
+                    if (m_owner.onIdentificate(this->shared_from_this())) {
+                        this->serverSendIdentificationAcceptance();
                     } else {
                         this->disconnect();
                     }
@@ -385,6 +384,37 @@ template <
                 }
             }
             delete receivedValue;
+        }
+    );
+}
+
+template <
+    ::detail::isEnum MessageType
+> void ::network::TcpConnection<MessageType>::serverSendIdentificationAcceptance()
+{
+
+    this->sendMessage<
+        [](::network::TcpConnection<MessageType>& self){
+            self.m_isValid = true;
+            dynamic_cast<::network::AServer<MessageType>&>(self.m_owner)
+                .validateConnection(self.shared_from_this());
+            self.startReadMessage();
+            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion successful.\n";
+        },
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
+            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance header failed: "
+                << errorCode.message() << ".\n";
+            self.disconnect();
+        },
+        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
+            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance body failed: "
+                << errorCode.message() << ".\n";
+            self.disconnect();
+        }
+    >(
+        ::network::Message<MessageType>{
+            MessageType::identificationAccepted,
+            m_id
         }
     );
 }
@@ -461,7 +491,11 @@ template <
                     this->disconnect();
                 }
             } else {
-                this->clientWaitIdentificationAcceptance();
+                if (m_owner.onIdentificate(this->shared_from_this())) {
+                    this->clientWaitIdentificationAcceptance();
+                } else {
+                    this->disconnect();
+                }
             }
         }
     );
@@ -472,41 +506,6 @@ template <
 #endif // ENABLE_ENCRYPTION
 
 
-
-template <
-    ::detail::isEnum MessageType
-> void ::network::TcpConnection<MessageType>::sendIdentificationAcceptance()
-{
-
-    this->sendMessage<
-        [](::network::TcpConnection<MessageType>& self){
-            self.m_isValid = true;
-#if ENABLE_ENCRYPTION
-            ::std::cout << "[Connection:TCP:" << self.m_id << "] Identificated successfully.\n";
-#else // ENABLE_ENCRYPTION
-            ::std::cout << "[Connection:TCP:" << self.m_id << "] Identificaion ignored.\n";
-#endif // ENABLE_ENCRYPTION
-            dynamic_cast<::network::AServer<MessageType>&>(self.m_owner)
-                .validateConnection(self.shared_from_this());
-            self.startReadMessage();
-        },
-        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
-            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance header failed: "
-                << errorCode.message() << ".\n";
-            self.disconnect();
-        },
-        [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
-            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Send identificaion acceptance body failed: "
-                << errorCode.message() << ".\n";
-            self.disconnect();
-        }
-    >(
-        ::network::Message<MessageType>{
-            MessageType::identificationAccepted,
-            m_id
-        }
-    );
-}
 
 // TODO: add timeout functionnalities
 template <
@@ -523,27 +522,23 @@ template <
                     self.writeAwaitingMessages();
                 }
                 self.m_isValid = true;
-#if ENABLE_ENCRYPTION
-                ::std::cout << "[Connection:TCP:" << self.m_id << "] Identificaion accepted.\n";
-#else // ENABLE_ENCRYPTION
-                ::std::cout << "[Connection:TCP:" << self.m_id << "] Identificaion ignored.\n";
-#endif // ENABLE_ENCRYPTION
+                ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion successful.\n";
             } else if (self.m_bufferIn.getType() == MessageType::identificationDenied) {
-                ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Iidentificaion denied.\n";
+                ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion denied.\n";
                 self.disconnect();
             } else {
-                ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion failed, "
+                ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identification failed, "
                     << "unexpected message received.\n";
                 self.disconnect();
             }
         },
         [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
-            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion acceptance failed: "
+            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identification acceptance failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();
         },
         [](::network::TcpConnection<MessageType>& self, const ::std::error_code& errorCode){
-            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Iidentificaion acceptance failed: "
+            ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Identificaion acceptance failed: "
                 << errorCode.message() << ".\n";
             self.disconnect();
         }

@@ -123,17 +123,7 @@ public:
     // handle the disconnection
     virtual void onDisconnect(
         ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-    );
-
-    // refuses the connection by returning false
-    virtual auto onClientConnect(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-    ) -> bool;
-
-    // refuses the identification by returning false
-    [[ nodiscard ]] virtual auto onClientIdentificate(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-    ) -> bool;
+    ) override;
 
 
 

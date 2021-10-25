@@ -354,6 +354,7 @@ private:
         >* handshakeReceivedPtr
     );
 
+    void serverSendIdentificationAcceptance();
 
 
     void clientHandshake();
@@ -373,10 +374,6 @@ private:
     );
 
 #endif // ENABLE_ENCRYPTION
-
-
-
-    void sendIdentificationAcceptance();
 
     void clientWaitIdentificationAcceptance();
 

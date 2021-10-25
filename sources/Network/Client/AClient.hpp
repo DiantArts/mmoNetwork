@@ -29,10 +29,10 @@ public:
 
     void disconnect();
 
-    [[ nodiscard ]] auto isConnected()
+    [[ nodiscard ]] auto isConnected() const
         -> bool;
 
-    [[ nodiscard ]] auto getUdpPort()
+    [[ nodiscard ]] auto getUdpPort() const
         -> ::std::uint16_t;
 
 
@@ -67,7 +67,7 @@ public:
     }
 
 
-    [[ nodiscard ]] auto isConnectedToServer()
+    [[ nodiscard ]] auto isConnectedToServer() const
         -> bool;
 
 
@@ -100,7 +100,7 @@ public:
     }
 
 
-    [[ nodiscard ]] auto isConnectedToPeer()
+    [[ nodiscard ]] auto isConnectedToPeer() const
         -> bool;
 
 

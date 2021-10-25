@@ -73,10 +73,22 @@ public:
 
     // ------------------------------------------------------------------ user methods
 
+    // refuses the connection by returning false
+    virtual auto onConnect(
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+    ) -> bool;
+
     // handle the disconnection
     virtual void onDisconnect(
         ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
     );
+
+
+
+    // refuses the identification by returning false
+    [[ nodiscard ]] virtual auto onIdentificate(
+        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+    ) -> bool;
 
 
 

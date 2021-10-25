@@ -28,15 +28,6 @@ private:
 
     // ------------------------------------------------------------------ user methods
 
-    // refuses the connection by returning false
-    virtual auto onClientConnect(
-        ::std::shared_ptr<::network::TcpConnection<::network::MessageType>> connection
-    ) -> bool
-        override
-    {
-        return true;
-    }
-
     // after receiving
     virtual void onTcpReceive(
         ::network::Message<::network::MessageType>& message,
