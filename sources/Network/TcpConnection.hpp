@@ -1,11 +1,14 @@
 #pragma once
 
 #include <Detail/Queue.hpp>
-#include <Security/Cipher.hpp>
 #include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
+
+#if ENABLE_ENCRYPTION
+#include <Security/Cipher.hpp>
+#endif
 
 namespace network { template <::detail::isEnum MessageType> class ANode; }
 
@@ -354,8 +357,6 @@ private:
         >* handshakeReceivedPtr
     );
 
-    void serverSendIdentificationAcceptance();
-
 
     void clientHandshake();
 
@@ -374,6 +375,8 @@ private:
     );
 
 #endif // ENABLE_ENCRYPTION
+
+    void serverSendIdentificationAcceptance();
 
     void clientWaitIdentificationAcceptance();
 
