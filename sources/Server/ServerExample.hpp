@@ -1,11 +1,12 @@
 #pragma once
 
 #include <Network/Server/AServer.hpp>
+#include <MessageType.hpp>
 
 
 
 class ServerExample
-    : public ::network::AServer<::network::MessageType>
+    : public ::network::AServer<::MessageType>
 {
 
 public:
@@ -17,7 +18,7 @@ public:
     ServerExample(
         const ::std::uint16_t port
     )
-        : ::network::AServer<::network::MessageType>{ port }
+        : ::network::AServer<::MessageType>{ port }
     {}
 
     ~ServerExample() = default;
@@ -30,55 +31,55 @@ private:
 
     // after receiving
     virtual void onTcpReceive(
-        ::network::Message<::network::MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<::network::MessageType>> connection
+        ::network::Message<::MessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
-        case ::network::MessageType::startCall: {
+        case ::MessageType::startCall: {
             ::detail::Id targetId;
             message >> targetId;
-            ::std::cout << "[" << connection->getId() << "] start call with [" << targetId << "].\n";
-            message.setType(::network::MessageType::incommingCall);
+            ::std::cout << "[" << connection->getUserName() << "] start call with [" << targetId << "].\n";
+            message.setType(::MessageType::incommingCall);
             message << connection->getAddress() << connection->getId();
             try {
                 this->getConnection(targetId)->send(message);
             } catch (...) {
-                connection->send(::network::MessageType::invalidTarget);
-                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+                connection->send(::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getUserName() << "] no connection at this ID.\n";
             }
             break;
-        } case ::network::MessageType::acceptCall: {
+        } case ::MessageType::acceptCall: {
             ::detail::Id targetId;
             message >> targetId;
-            ::std::cout << "[" << connection->getId() << "] accepted [" << targetId << "]'s call.\n";
+            ::std::cout << "[" << connection->getUserName() << "] accepted [" << targetId << "]'s call.\n";
             message << connection->getAddress();
             try {
                 this->getConnection(targetId)->send(message);
             } catch (...) {
-                connection->send(::network::MessageType::invalidTarget);
-                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+                connection->send(::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getUserName() << "] no connection at this ID.\n";
             }
             break;
-        } case ::network::MessageType::refuseCall: {
+        } case ::MessageType::refuseCall: {
             ::detail::Id targetId;
             message >> targetId;
-            ::std::cout << "[" << connection->getId() << "] refused [" << targetId << "]'s call.\n";
+            ::std::cout << "[" << connection->getUserName() << "] refused [" << targetId << "]'s call.\n";
             try {
                 this->getConnection(targetId)->send(message);
             } catch (...) {
-                connection->send(::network::MessageType::invalidTarget);
-                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "] no connection at this ID.\n";
+                connection->send(::MessageType::invalidTarget);
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getUserName() << "] no connection at this ID.\n";
             }
             break;
-        } case ::network::MessageType::messageAll: {
-            ::std::cout << "[" << connection->getId() << "] Message All.\n";
+        } case ::MessageType::messageAll: {
+            ::std::cout << "[" << connection->getUserName() << "] Message All.\n";
             this->sendToAllClients(
                 ::network::Message{
-                    ::network::MessageType::message,
+                    ::MessageType::message,
                     ::network::TransmissionProtocol::tcp,
                     message.extract<::std::string>(),
-                    connection->getId()
+                    connection->getUserName()
                 },
                 connection
             );

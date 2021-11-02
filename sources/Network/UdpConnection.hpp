@@ -6,7 +6,7 @@
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
 
-namespace network { template <::detail::isEnum MessageType> class AClient; }
+namespace network { template <::detail::isEnum UserMessageType> class AClient; }
 
 
 
@@ -15,9 +15,9 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class UdpConnection
-    : public ::std::enable_shared_from_this<UdpConnection<MessageType>>
+    : public ::std::enable_shared_from_this<UdpConnection<UserMessageType>>
 {
 
 public:
@@ -25,7 +25,7 @@ public:
     // ------------------------------------------------------------------ *structors
 
     UdpConnection(
-        ::network::AClient<MessageType>& owner
+        ::network::AClient<UserMessageType>& owner
     );
 
     // doesnt call onDisconnect
@@ -50,7 +50,7 @@ public:
     // ------------------------------------------------------------------ async - out
 
     void send(
-        MessageType messageType,
+        UserMessageType messageType,
         auto&&... args
     )
     {
@@ -73,7 +73,7 @@ public:
     }
 
     void send(
-        ::network::Message<MessageType>&& message
+        ::network::Message<UserMessageType>&& message
     );
 
 
@@ -81,7 +81,7 @@ public:
     // ------------------------------------------------------------------ other
 
     [[ nodiscard ]] auto getOwner() const
-        -> const ::network::AClient<MessageType>&;
+        -> const ::network::AClient<UserMessageType>&;
 
     [[ nodiscard ]] auto getPort() const
         -> ::std::uint16_t;
@@ -121,14 +121,16 @@ private:
 
 private:
 
-    ::network::AClient<MessageType>& m_owner;
+    ::network::AClient<UserMessageType>& m_owner;
 
     ::asio::ip::udp::socket m_socket;
-    ::network::Message<MessageType> m_bufferIn;
-    ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
+    ::network::Message<UserMessageType> m_bufferIn;
+    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
 
 };
 
 
 
 } // namespace network
+
+#include <Network/UdpConnection.impl.hpp>

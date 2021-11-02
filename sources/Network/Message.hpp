@@ -10,18 +10,47 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class Message {
 
 public:
 
     // ------------------------------------------------------------------ Header
 
-    struct Header {
-        MessageType packetType;
-        ::network::TransmissionProtocol transmissionProtocol{ TransmissionProtocol::unspecified };
-        ::std::uint16_t bodySize{ 0 };
+    enum class TransmissionProtocol : ::std::uint16_t {
+        unspecified,
+        udp,
+        tcp
     };
+
+    enum class SystemType : ::std::uint16_t {
+        // error = static_cast<::std::uint16_t>(UserMessageType::last) + 1, // TODO: fix that
+        error = 10000,
+        identificationAccepted,
+        identificationDenied,
+        authentification,
+        authentificationAccepted,
+        authentificationDenied,
+        ping, // TODO imlement
+        message, // TODO imlement
+        messageAll,
+        startCall,
+        incommingCall,
+        acceptCall,
+        refuseCall,
+        setName,
+    };
+
+    // Describes the message. Always put the transmission protocol at the end since it isnt sent
+    // Uses unused space cause padding
+    struct Header {
+        ::std::uint16_t packetType;
+        ::std::uint16_t bodySize{ 0 };
+        Message<UserMessageType>::TransmissionProtocol transmissionProtocol{
+            Message<UserMessageType>::TransmissionProtocol::unspecified
+        };
+    };
+
 
 
 
@@ -32,11 +61,12 @@ public:
     Message();
 
     Message(
-        MessageType&& messageType
+        Message<UserMessageType>::SystemType messageType,
+        auto&&... args
     );
 
     Message(
-        MessageType&& messageType,
+        UserMessageType messageType,
         auto&&... args
     );
 
@@ -48,11 +78,23 @@ public:
     // Insert any POD-like data into the body
 
     void insert(
+        const ::detail::isSendableData auto& data
+    );
+
+    void insert(
         ::detail::isSendableData auto&& data
     );
 
     void insert(
-        const ::std::span<auto> data
+        const ::std::span<auto>& data
+    );
+
+    void insert(
+        const ::std::pair<auto, auto>& data
+    );
+
+    void insert(
+        const ::std::vector<auto>& data
     );
 
     void insert(
@@ -67,7 +109,9 @@ public:
         const char* ptrToData
     );
 
-    void insertRawData(
+
+
+    void insertRawMemory(
         auto* ptrToData,
         const ::std::size_t size
     );
@@ -80,12 +124,12 @@ public:
 
 
     auto operator<<(
-        auto&& data
-    ) -> Message<MessageType>&;
+        const auto& data
+    ) -> Message<UserMessageType>&;
 
     auto operator<<(
-        const auto& data
-    ) -> Message<MessageType>&;
+        auto&& data
+    ) -> Message<UserMessageType>&;
 
 
 
@@ -106,6 +150,14 @@ public:
     );
 
     void extract(
+        ::std::pair<auto, auto>& data
+    );
+
+    void extract(
+        ::std::vector<auto>& data
+    );
+
+    void extract(
         ::std::string& data
     );
 
@@ -116,7 +168,7 @@ public:
 
     auto operator>>(
         auto& data
-    ) -> Message<MessageType>&;
+    ) -> Message<UserMessageType>&;
 
 
 
@@ -125,39 +177,36 @@ public:
     [[ nodiscard ]] constexpr static inline auto getHeaderSize()
         -> ::std::size_t;
 
+    [[ nodiscard ]] constexpr static inline auto getSendingHeaderSize()
+        -> ::std::size_t;
+
     [[ nodiscard ]] auto getBodySize() const
         -> ::std::size_t;
 
     [[ nodiscard ]] auto getSize() const
         -> ::std::size_t;
 
-    template <
-        typename... Types
-    > [[ nodiscard ]] auto hasEnoughSizeFor() const
-        -> bool;
-
-    void setTransmissionProtocol(
-        ::network::TransmissionProtocol protocol
-    );
-
-    [[ nodiscard ]] auto getTransmissionProtocol() const
-        -> ::network::TransmissionProtocol;
-
     [[ nodiscard ]] auto isBodyEmpty() const
         -> bool;
-
-
-
-    // ------------------------------------------------------------------ header
 
     auto getHeaderAddr()
         -> void*;
 
     auto getType() const
-        -> MessageType;
+        -> UserMessageType;
+
+    auto getTypeAsSystemType() const
+        -> Message<UserMessageType>::SystemType;
 
     void setType(
-        MessageType type
+        UserMessageType type
+    );
+
+    [[ nodiscard ]] auto getTransmissionProtocol()
+        -> Message<UserMessageType>::TransmissionProtocol;
+
+    void setTransmissionProtocol(
+        Message<UserMessageType>::TransmissionProtocol protocol
     );
 
 
@@ -190,7 +239,7 @@ public:
 
 private:
 
-    Message<MessageType>::Header m_header;
+    Message<UserMessageType>::Header m_header;
     ::std::vector<::std::byte> m_body;
 
 };

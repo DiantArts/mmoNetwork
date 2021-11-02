@@ -1,37 +1,32 @@
 #pragma once
 
 #include <Network/Client/AClient.hpp>
-#include <Network/MessageType.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
+#include <MessageType.hpp>
 
 
+
+// TODO: fix call
 
 class ClientExample
-    : public ::network::AClient<::network::MessageType>
+    : public ::network::AClient<::MessageType>
 {
 
 public:
 
     // ------------------------------------------------------------------ Other
 
-    void pingServer()
-    {
-        this->sendToServer(::network::MessageType::ping);
-    }
-
     void messageServer(
         ::std::string_view message
     )
     {
-        this->sendToServer(::network::MessageType::messageAll, message);
+        this->sendToServer(::MessageType::messageAll, message);
     }
 
     void messagePeer(
         ::std::string_view message
     )
     {
-        this->sendToPeer(::network::MessageType::message, message, m_connectionToServer->getId());
+        this->sendToPeer(::MessageType::message, message, m_tcpConnectionToServer->getUserName());
     }
 
     void startCall(
@@ -39,12 +34,12 @@ public:
     )
     {
         if (this->isConnectedToPeer()) {
-            ::std::cerr << "[ERROR:Client:TCP:" << m_connectionToServer->getId() << "] Already in call.\n";
-        } else if (target == m_connectionToServer->getId()) {
-            ::std::cerr << "[ERROR:Client:TCP:" << m_connectionToServer->getId() << "] Cannot call yourself\n";
+            ::std::cerr << "[ERROR:Client:TCP:" << m_tcpConnectionToServer->getId() << "] Already in call.\n";
+        } else if (target == m_tcpConnectionToServer->getId()) {
+            ::std::cerr << "[ERROR:Client:TCP:" << m_tcpConnectionToServer->getId() << "] Cannot call yourself\n";
         } else {
             this->openUdpConnection();
-            this->sendToServer(::network::MessageType::startCall, this->getUdpPort(), target);
+            this->sendToServer(::MessageType::startCall, this->getUdpPort(), target);
             ::std::cout << "calling [" << target << "].\n";
         }
     }
@@ -61,56 +56,68 @@ public:
         if (str == "y") {
             this->openUdpConnection();
             this->targetPeer(udpAddr, udpPort);
-            this->sendToServer(::network::MessageType::acceptCall, this->getUdpPort(), ::std::move(callerId));
+            this->sendToServer(::MessageType::acceptCall, this->getUdpPort(), ::std::move(callerId));
         } else {
-            this->sendToServer(::network::MessageType::refuseCall, callerId);
+            this->sendToServer(::MessageType::refuseCall, callerId);
             ::std::cout << "call refused\n";
         }
     }
 
-    void handleMessagesIn()
+    void stopCall()
     {
-        while (!this->getIncommingMessages().empty()) {
-            auto message{ this->getIncommingMessages().pop_front() };
-            switch (message.getType()) {
-            case ::network::MessageType::incommingCall: {
-                ::detail::Id callerId;
-                ::std::string udpAddr;
-                ::std::uint16_t udpPort;
-                message >> callerId >> udpAddr >> udpPort;
-                ::std::cout << "Incomming call from [" << callerId << "] ("
-                    << udpAddr << ":" << udpPort << ").\n";
-                if (!this->isConnectedToPeer()) {
-                    this->answerCall(callerId, udpAddr, udpPort);
-                } else {
-                    ::std::cout << "call refused, a call is already ongoing.\n";
-                }
-                break;
-            } case ::network::MessageType::acceptCall: {
-                ::std::string udpAddr;
-                ::std::uint16_t udpPort;
-                message >> udpAddr >> udpPort;
-                this->targetPeer(udpAddr, udpPort);
-                ::std::cout << "call accepted: "<< udpAddr << ":" << udpPort << ".\n";
-                break;
-            } case ::network::MessageType::refuseCall: {
-                this->closePeerConnection();
-                ::std::cout << "call refused.\n";
-                break;
-            } case ::network::MessageType::message: {
-                ::std::cout << "message from ["
-                    << (message.getTransmissionProtocol() == ::network::TransmissionProtocol::tcp ? "TCP" : "UDP")
-                    << ":" << message.extract<::detail::Id>() << "] "
-                    << message.extract<::std::string>() << ::std::endl;
-                break;
-            } case ::network::MessageType::ping: {
-                // auto timeNow{ ::std::chrono::system_clock::now() };
-                // decltype(timeNow) timeThen;
-                // message >> timeThen;
-                ::std::cout << "Ping received" << ::std::endl;
-                break;
-            } default: break;
+        this->closePeerConnection();
+    }
+
+    virtual void onTcpReceive(
+        ::network::Message<::MessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
+    ) override
+    {
+        switch (message.getType()) {
+        case ::MessageType::incommingCall: {
+            ::detail::Id callerId;
+            ::std::string udpAddr;
+            ::std::uint16_t udpPort;
+            message >> callerId >> udpAddr >> udpPort;
+            ::std::cout << "Incomming call from [" << callerId << "] ("
+                << udpAddr << ":" << udpPort << ").\n";
+            if (!this->isConnectedToPeer()) {
+                this->answerCall(callerId, udpAddr, udpPort);
+            } else {
+                ::std::cout << "call refused, a call is already ongoing.\n";
             }
+            break;
+        } case ::MessageType::acceptCall: {
+            ::std::string udpAddr;
+            ::std::uint16_t udpPort;
+            message >> udpAddr >> udpPort;
+            this->targetPeer(udpAddr, udpPort);
+            ::std::cout << "call accepted: "<< udpAddr << ":" << udpPort << ".\n";
+            break;
+        } case ::MessageType::refuseCall: {
+            this->closePeerConnection();
+            ::std::cout << "call refused.\n";
+            break;
+        } case ::MessageType::message: {
+            ::std::cout << "message from [Tcp:"
+                << "" << message.extract<::std::string>() << "] "
+                << message.extract<::std::string>() << ::std::endl;
+            break;
+        } default: break;
+        }
+    }
+
+    virtual void onUdpReceive(
+        ::network::Message<::MessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
+    ) override
+    {
+        switch (message.getType()) {
+        case ::MessageType::message:
+            ::std::cout << "message from [Udp:" << "" << message.extract<::std::string>() << "] "
+                << message.extract<::std::string>() << ::std::endl;
+            break;
+        default: break;
         }
     }
 

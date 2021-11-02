@@ -1,17 +1,4 @@
-#include <pch.hpp>
-#include <Detail/Queue.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
-#include <Network/MessageType.hpp>
-
-
-
-// ------------------------------------------------------------------ explicit instantiations
-
-template class ::detail::Queue<::network::Message<::network::MessageType>>;
-template class ::detail::Queue<::network::OwnedMessage<::network::MessageType>>;
-
-
+#pragma once
 
 // ------------------------------------------------------------------ *structors
 
@@ -29,6 +16,15 @@ template <
 
 
 // ------------------------------------------------------------------ front
+
+template <
+    typename Type
+> auto ::detail::Queue<Type>::front() const
+    -> const Type&
+{
+    ::std::scoped_lock lock{ m_mutexQueue };
+    return m_deque.front();
+}
 
 template <
     typename Type
@@ -78,6 +74,15 @@ template <
 
 template <
     typename Type
+> auto ::detail::Queue<Type>::back() const
+    -> const Type&
+{
+    ::std::scoped_lock lock{ m_mutexQueue };
+    return m_deque.back();
+}
+
+template <
+    typename Type
 > auto ::detail::Queue<Type>::back()
     -> Type&
 {
@@ -124,7 +129,7 @@ template <
 
 template <
     typename Type
-> auto ::detail::Queue<Type>::empty()
+> auto ::detail::Queue<Type>::empty() const
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -133,7 +138,7 @@ template <
 
 template <
     typename Type
-> auto ::detail::Queue<Type>::count()
+> auto ::detail::Queue<Type>::count() const
     -> bool
 {
     ::std::scoped_lock lock{ m_mutexQueue };
@@ -154,7 +159,7 @@ template <
 
 template <
     typename Type
-> void ::detail::Queue<Type>::wait()
+> void ::detail::Queue<Type>::wait() const
 {
     ::std::unique_lock lock{ m_mutexBlocker };
     m_blocker.wait(lock);
@@ -162,7 +167,7 @@ template <
 
 template <
     typename Type
-> void ::detail::Queue<Type>::notify()
+> void ::detail::Queue<Type>::notify() const
 {
     ::std::scoped_lock lock{ m_mutexBlocker };
     m_blocker.notify_one();

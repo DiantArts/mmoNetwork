@@ -1,15 +1,12 @@
 #include <pch.hpp>
 #include <Client/ClientExample.hpp>
 
+enum class Enum{ nothing };
 
 
 int main(int argc, char **argv)
 {
-    if (argc != 3) {
-        ::std::cerr << "Usage: client <host> <port>" << ::std::endl;
-        return EXIT_FAILURE;
-    }
-
+    ::network::Message<Enum> msg;
     ::ClientExample client;
     ::std::thread thread;
 
@@ -22,8 +19,7 @@ int main(int argc, char **argv)
             [&client](){
                 ::std::size_t i{ 0 };
                 while (client.isConnectedToServer()) {
-                    client.getIncommingMessages().wait();
-                    client.handleMessagesIn();
+                    client.blockingPullIncommingMessages();
                 }
             }
         };
@@ -31,14 +27,14 @@ int main(int argc, char **argv)
         ::std::string str;
         while (client.isConnected()) {
             ::std::getline(::std::cin, str);
-            if (!::std::strncmp(str.c_str(), "/q", 2)) {
-                client.disconnect();
-            } else if (!::std::strncmp(str.c_str(), "/p", 2)) {
-                client.pingServer();
-            } else if (!::std::strncmp(str.c_str(), "/c", 2)) {
-                client.startCall(::std::atoi(str.substr(3).c_str()));
-            } else if (!::std::strncmp(str.c_str(), "/u", 2)) {
-                client.messagePeer(str.substr(3));
+            if (!::std::strncmp(str.c_str(), "/", 1)) {
+                switch (*str.substr(1, 2).c_str()) {
+                case 'q': client.disconnect(); break;
+                case 'c': client.startCall(::std::atoi(str.substr(3).c_str())); break;
+                case 'u': client.messagePeer(str.substr(3)); break;
+                case 's': client.stopCall(); break;
+                default: ::std::cerr << "[ERROR:SYSTEM] invalid command.\n";
+                }
             } else {
                 client.messageServer(str);
             }

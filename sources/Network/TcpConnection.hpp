@@ -6,11 +6,11 @@
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
 
-#if ENABLE_ENCRYPTION
+#ifdef ENABLE_ENCRYPTION
 #include <Security/Cipher.hpp>
 #endif
 
-namespace network { template <::detail::isEnum MessageType> class ANode; }
+namespace network { template <::detail::isEnum UserMessageType> class ANode; }
 
 
 
@@ -19,9 +19,9 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class TcpConnection
-    : public ::std::enable_shared_from_this<TcpConnection<MessageType>>
+    : public ::std::enable_shared_from_this<TcpConnection<UserMessageType>>
 {
 
 public:
@@ -29,7 +29,7 @@ public:
     // ------------------------------------------------------------------ *structors
 
     TcpConnection(
-        ::network::ANode<MessageType>& owner,
+        ::network::ANode<UserMessageType>& owner,
         ::asio::ip::tcp::socket socket
     );
 
@@ -59,47 +59,56 @@ public:
     // ------------------------------------------------------------------ async - out
 
     void send(
-        MessageType messageType,
+        UserMessageType messageType,
         auto&&... args
-    )
-    {
-        ::network::Message message{
-            ::std::forward<decltype(messageType)>(messageType),
-            ::network::TransmissionProtocol::tcp,
-            ::std::forward<decltype(args)>(args)...
-        };
-        ::asio::post(
-            m_owner.getAsioContext(),
-            [this, message]()
-            {
-                auto wasOutQueueEmpty{ m_messagesOut.empty() };
-                m_messagesOut.push_back(::std::move(message));
-                if (m_isValid && wasOutQueueEmpty) {
-                    this->writeAwaitingMessages();
-                }
-            }
-        );
-    }
+    );
 
     void send(
-        ::network::Message<MessageType> message
+        ::network::Message<UserMessageType> message
     );
+
+    bool hasSendingMessagesAwaiting() const;
+
+    void writeAwaitingMessages();
+
+
+
+    // ------------------------------------------------------------------ async - in
+
+    void startReadMessage();
+
+    void pullIncommingMessage();
+
+    void pullIncommingMessages();
+
+    void blockingPullIncommingMessages();
 
 
 
     // ------------------------------------------------------------------ other
 
+    // TODO: create struct
+    [[ nodiscard ]] auto getSharableInformations() const
+        -> ::std::pair<::std::string, ::detail::Id>;
+
     [[ nodiscard ]] auto getId() const
         -> ::detail::Id;
 
     [[ nodiscard ]] auto getOwner() const
-        -> const ::network::ANode<MessageType>&;
+        -> const ::network::ANode<UserMessageType>&;
 
     [[ nodiscard ]] auto getPort() const
         -> ::std::uint16_t;
 
     [[ nodiscard ]] auto getAddress() const
         -> ::std::string;
+
+    [[ nodiscard ]] auto getUserName() const
+        -> const ::std::string&;
+
+    void setUserName(
+        ::std::string newName
+    );
 
 
 
@@ -112,57 +121,8 @@ private:
         auto failureHeaderCallback,
         auto failureBodyCallback
     > void sendMessage(
-        ::network::Message<MessageType> message
-    )
-    {
-        ::asio::async_write(
-            m_socket,
-            ::asio::buffer(message.getHeaderAddr(), message.getHeaderSize()),
-            ::std::bind_front(
-                [this](
-                    ::network::Message<MessageType> message,
-                    const ::std::error_code& errorCode,
-                    const ::std::size_t length
-                ) {
-                    if (errorCode) {
-                        if (errorCode == ::asio::error::operation_aborted) {
-                            ::std::cerr << "[Connection:TCP] Operation canceled\n";
-                        } else {
-                            failureHeaderCallback(::std::ref(*this), errorCode);
-                        }
-                    } else {
-                        if (!message.isBodyEmpty()) {
-                            ::asio::async_write(
-                                m_socket,
-                                ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
-                                ::std::bind_front(
-                                    [this](
-                                        ::network::Message<MessageType> message,
-                                        const ::std::error_code& errorCode,
-                                        const ::std::size_t length
-                                    ) {
-                                        if (errorCode) {
-                                            if (errorCode == ::asio::error::operation_aborted) {
-                                                ::std::cerr << "[Connection:TCP] Operation canceled\n";
-                                            } else {
-                                                failureBodyCallback(::std::ref(*this), errorCode);
-                                            }
-                                        } else {
-                                            successCallback(::std::ref(*this));
-                                        }
-                                    },
-                                    ::std::move(message)
-                                )
-                            );
-                        } else {
-                            successCallback(::std::ref(*this));
-                        }
-                    }
-                },
-                ::std::move(message)
-            )
-        );
-    }
+        ::network::Message<UserMessageType> message
+    );
 
     template <
         typename Type,
@@ -170,25 +130,7 @@ private:
         auto failureCallback
     > void sendRawData(
         auto&&... args
-    )
-    {
-        auto pointerToData{ new Type{ ::std::forward<decltype(args)>(args)... } };
-        ::asio::async_write(
-            m_socket,
-            ::asio::buffer(pointerToData, sizeof(Type)),
-            [this, pointerToData](
-                const ::std::error_code& errorCode,
-                const ::std::size_t length
-            ) {
-                if (errorCode) {
-                    failureCallback(::std::ref(*this), errorCode);
-                } else {
-                    successCallback(::std::ref(*this));
-                }
-                delete pointerToData;
-            }
-        );
-    }
+    );
 
     template <
         auto successCallback,
@@ -196,25 +138,7 @@ private:
     > void sendRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
-    )
-    {
-        ::asio::async_write(
-            m_socket,
-            ::asio::buffer(pointerToData, dataSize),
-            [this](
-                const ::std::error_code& errorCode,
-                const ::std::size_t length
-            ) {
-                if (errorCode) {
-                    failureCallback(::std::ref(*this), errorCode);
-                } else {
-                    successCallback(::std::ref(*this));
-                }
-            }
-        );
-    }
-
-    void writeAwaitingMessages();
+    );
 
 
 
@@ -224,73 +148,13 @@ private:
         auto successCallback,
         auto failureHeaderCallback,
         auto failureBodyCallback
-    > void receiveMessage()
-    {
-        ::asio::async_read(
-            m_socket,
-            ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getHeaderSize()),
-            [this](
-                const ::std::error_code& errorCode,
-                const ::std::size_t length
-            ) {
-                if (errorCode) {
-                    if (errorCode == ::asio::error::operation_aborted) {
-                        ::std::cerr << "[Connection:TCP] Operation canceled\n";
-                    } else {
-                        failureHeaderCallback(::std::ref(*this), errorCode);
-                    }
-                } else {
-                    if (!m_bufferIn.isBodyEmpty()) {
-                        m_bufferIn.updateBodySize();
-                        ::asio::async_read(
-                            m_socket,
-                            ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
-                            [this](
-                                const ::std::error_code& errorCode,
-                                const ::std::size_t length
-                            ) {
-                                if (errorCode) {
-                                    if (errorCode == ::asio::error::operation_aborted) {
-                                        ::std::cerr << "[Connection:TCP] Operation canceled\n";
-                                    } else {
-                                        failureBodyCallback(::std::ref(*this), errorCode);
-                                    }
-                                } else {
-                                    successCallback(::std::ref(*this));
-                                }
-                            }
-                        );
-                    } else {
-                        successCallback(::std::ref(*this));
-                    }
-                }
-            }
-        );
-    }
+    > void receiveMessage();
 
     template <
         typename Type,
         auto successCallback,
         auto failureCallback
-    > void receiveRawData()
-    {
-        auto pointerToData{ new ::std::array<::std::byte, sizeof(Type)> };
-        ::asio::async_read(
-            m_socket,
-            ::asio::buffer(pointerToData->data(), sizeof(Type)),
-            [this, pointerToData](
-                const ::std::error_code& errorCode,
-                const ::std::size_t length
-            ) {
-                if (errorCode) {
-                    failureCallback(::std::ref(*this), errorCode);
-                } else {
-                    successCallback(::std::ref(*this), *static_cast<Type*>(pointerToData->data()));
-                }
-                delete pointerToData;
-            }
-        );
-    }
+    > void receiveRawData();
 
     template <
         auto successCallback,
@@ -298,25 +162,7 @@ private:
     > void receiveToRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
-    )
-    {
-        ::asio::async_read(
-            m_socket,
-            ::asio::buffer(pointerToData, dataSize),
-            [this, pointerToData](
-                const ::std::error_code& errorCode,
-                const ::std::size_t length
-            ) {
-                if (errorCode) {
-                    failureCallback(::std::ref(*this), errorCode);
-                } else {
-                    successCallback(::std::ref(*this));
-                }
-            }
-        );
-    }
-
-    void startReadMessage();
+    );
 
     void readBody();
 
@@ -324,15 +170,15 @@ private:
 
 
 
-private:
-
-    // ------------------------------------------------------------------ async - securityProtocol
+    // ------------------------------------------------------------------ async - identification
     // Identification (Client claiming to identify as a client of the protocol):
     //     1. Both send the public key
     //     2. The server sends an handshake encrypted
     //     3. The client resolves and sends the handshake back encrypted
 
-    void identificate();
+    void identification();
+
+    void sendIdentificationDenied();
 
 
     void sendPublicKey();
@@ -341,7 +187,7 @@ private:
 
 
 
-#if ENABLE_ENCRYPTION
+#ifdef ENABLE_ENCRYPTION
 
     void serverHandshake();
 
@@ -376,32 +222,54 @@ private:
 
 #endif // ENABLE_ENCRYPTION
 
+
+
     void serverSendIdentificationAcceptance();
 
     void clientWaitIdentificationAcceptance();
 
 
 
-    // ------------------------------------------------------------------ async - securityProtocol
-    // TODO: Authentification
+    void sendIdentificationDenial();
+
+
+
+    // ------------------------------------------------------------------ async - Authentification
     // Authentification (Client registering with some provable way that they are who the claim to be):
     //     1. Username
-    //     2. password
+    //     2. TODO: password
 
+    void serverAuthentification();
+
+    void serverReceiveAuthentification();
+
+    void serverSendAuthentificationAcceptance();
+
+
+
+    void clientAuthentification();
+
+    void clientSendAuthentification();
+
+    void clientReceiveAuthentificationAcceptance();
+
+
+
+    void sendAuthentificationDenial();
 
 
 
 private:
 
-    ::network::ANode<MessageType>& m_owner;
+    ::network::ANode<UserMessageType>& m_owner;
 
     // tcp
     ::asio::ip::tcp::socket m_socket;
-    ::network::Message<MessageType> m_bufferIn;
-    ::detail::Queue<::network::Message<MessageType>> m_messagesOut;
+    ::network::Message<UserMessageType> m_bufferIn;
+    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
 
     // security module
-#if ENABLE_ENCRYPTION
+#ifdef ENABLE_ENCRYPTION
     ::security::Cipher m_cipher;
 #endif // ENABLE_ENCRYPTION
 
@@ -409,8 +277,12 @@ private:
 
     bool m_isValid{ false };
 
+    ::std::string m_userName;
+
 };
 
 
 
 } // namespace network
+
+#include <Network/TcpConnection.impl.hpp>

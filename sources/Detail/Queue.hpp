@@ -1,5 +1,4 @@
-// thread safe queue
-// TODO: lock free
+// TODO: lock free thread safe queue
 
 #pragma once
 
@@ -25,6 +24,9 @@ public:
 
     // ------------------------------------------------------------------ front
 
+    [[ nodiscard ]] auto front() const
+        -> const Type&;
+
     [[ nodiscard ]] auto front()
         -> Type&;
 
@@ -40,6 +42,9 @@ public:
 
 
     // ------------------------------------------------------------------ back
+
+    [[ nodiscard ]] auto back() const
+        -> const Type&;
 
     [[ nodiscard ]] auto back()
         -> Type&;
@@ -57,10 +62,10 @@ public:
 
     // ------------------------------------------------------------------ helpers
 
-    [[ nodiscard ]] auto empty()
+    [[ nodiscard ]] auto empty() const
         -> bool;
 
-    [[ nodiscard ]] auto count()
+    [[ nodiscard ]] auto count() const
         -> bool;
 
     void clear();
@@ -69,22 +74,24 @@ public:
 
     // ------------------------------------------------------------------ blocking
 
-    void wait();
+    void wait() const;
 
-    void notify();
+    void notify() const;
 
 
 
 private:
 
-    ::std::mutex m_mutexQueue;
     ::std::deque<Type> m_deque;
 
-    ::std::mutex m_mutexBlocker;
-    ::std::condition_variable m_blocker;
+    mutable ::std::mutex m_mutexQueue;
+    mutable ::std::mutex m_mutexBlocker;
+    mutable ::std::condition_variable m_blocker;
 
 };
 
 
 
 } // namespace detail
+
+#include <Detail/Queue.impl.hpp>

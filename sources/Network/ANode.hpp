@@ -3,7 +3,6 @@
 #include <Detail/Id.hpp>
 #include <Detail/Concepts.hpp>
 #include <Network/TcpConnection.hpp>
-#include <Network/MessageType.hpp>
 
 
 
@@ -12,7 +11,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class ANode {
 
 public:
@@ -29,7 +28,7 @@ public:
     // ------------------------------------------------------------------ *structors
 
     explicit ANode(
-        ANode<MessageType>::Type type
+        ANode<UserMessageType>::Type type
     );
 
     virtual ~ANode() = 0;
@@ -46,15 +45,14 @@ public:
 
     void blockingPullIncommingMessages();
 
+
+
     void pushIncommingMessage(
         auto&&... args
-    )
-    {
-        m_messagesIn.push_back(::std::forward<decltype(args)>(args)...);
-    }
+    );
 
     auto getIncommingMessages()
-        -> ::detail::Queue<::network::OwnedMessage<MessageType>>&;
+        -> ::detail::Queue<::network::OwnedMessage<UserMessageType>>&;
 
 
 
@@ -67,7 +65,7 @@ public:
         -> ::std::thread&;
 
     [[ nodiscard ]] auto getType()
-        -> ANode<MessageType>::Type;
+        -> ANode<UserMessageType>::Type;
 
 
 
@@ -75,38 +73,47 @@ public:
 
     // refuses the connection by returning false
     virtual auto onConnect(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) -> bool;
 
     // handle the disconnection
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     );
 
 
+    // refuses the identification by returning false
+    [[ nodiscard ]] virtual auto onIdentification(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) -> bool;
 
     // refuses the identification by returning false
-    [[ nodiscard ]] virtual auto onIdentificate(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-    ) -> bool;
+    [[ nodiscard ]] virtual auto onAuthentification(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) -> bool
+        = 0;
+
+    virtual void onConnectionValidated(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) = 0;
 
 
 
     // after receiving
     virtual void onTcpReceive(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     );
 
     virtual void onUdpReceive(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     );
 
     // returns true meaning the message is already handled
     virtual auto defaultReceiveBehaviour(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) -> bool = 0;
 
 
@@ -116,12 +123,17 @@ public:
     // client: is denided
 
     virtual void onConnectionDenial(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     );
 
     // TODO: ban list
     virtual void onIdentificationDenial(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    );
+
+    // TODO: implemente
+    virtual void onAuthentificationDenial(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     );
 
 
@@ -132,12 +144,14 @@ private:
     ::asio::io_context m_asioContext;
     ::std::thread m_threadContext;
 
-    ::detail::Queue<::network::OwnedMessage<MessageType>> m_messagesIn;
+    ::detail::Queue<::network::OwnedMessage<UserMessageType>> m_messagesIn;
 
-    ANode<MessageType>::Type m_type;
+    ANode<UserMessageType>::Type m_type;
 
 };
 
 
 
 } // namespace network
+
+#include <Network/ANode.impl.hpp>

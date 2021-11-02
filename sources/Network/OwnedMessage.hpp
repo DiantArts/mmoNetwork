@@ -2,7 +2,7 @@
 
 #include <Network/Message.hpp>
 
-namespace network { template <::detail::isEnum MessageType> class TcpConnection; }
+namespace network { template <::detail::isEnum UserMessageType> class TcpConnection; }
 
 
 
@@ -11,9 +11,9 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class OwnedMessage
-    : public ::network::Message<MessageType>
+    : public ::network::Message<UserMessageType>
 {
 
 public:
@@ -21,8 +21,8 @@ public:
     // ------------------------------------------------------------------ *structors
 
     OwnedMessage(
-        ::network::Message<MessageType> message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> remote
+        ::network::Message<UserMessageType> message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> remote
     );
 
     ~OwnedMessage();
@@ -32,16 +32,18 @@ public:
     // ------------------------------------------------------------------ informations
 
     auto getRemote() const
-        -> ::std::shared_ptr<::network::TcpConnection<MessageType>>;
+        -> ::std::shared_ptr<::network::TcpConnection<UserMessageType>>;
 
 
 
 private:
 
-    ::std::shared_ptr<::network::TcpConnection<MessageType>> m_remote{ nullptr };
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> m_remote{ nullptr };
 
 };
 
 
 
 } // namespace network
+
+#include <Network/OwnedMessage.impl.hpp>

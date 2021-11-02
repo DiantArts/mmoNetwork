@@ -1,0 +1,243 @@
+#pragma once
+
+// ------------------------------------------------------------------ *structors
+
+template <
+    ::detail::isEnum UserMessageType
+> ::network::AServer<UserMessageType>::AServer(
+    const ::std::uint16_t port
+)
+    : ::network::ANode<UserMessageType>{ ::network::ANode<UserMessageType>::Type::server }
+    , m_asioAcceptor{
+        this->getAsioContext(),
+        ::asio::ip::tcp::endpoint{ ::asio::ip::tcp::v4(), port }
+    }
+{
+    ::std::cout << "[Server] Ready to listen port " << port << ".\n";
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> ::network::AServer<UserMessageType>::~AServer()
+{
+    this->stop();
+}
+
+
+
+// ------------------------------------------------------------------ running
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::AServer<UserMessageType>::start()
+    -> bool
+{
+    try {
+        this->startReceivingConnections();
+        this->getThreadContext() = ::std::thread([this](){ this->getAsioContext().run(); });
+    } catch (::std::exception& e) {
+        ::std::cerr << "[ERROR:Server] " << e.what() << ".\n";
+        return false;
+    }
+    ::std::cout << "[Server] Started" << '\n';
+    return true;
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::stop()
+{
+    if (this->isRunning()) {
+        this->stopThread();
+        this->getIncommingMessages().notify();
+        ::std::cout << "[Server] Stopped" << '\n';
+    }
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::AServer<UserMessageType>::isRunning()
+    -> bool
+{
+    // TODO: isRunning implemetation
+    return !this->getAsioContext().stopped();
+}
+
+
+
+// ------------------------------------------------------------------ in - async
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::startReceivingConnections()
+{
+    m_asioAcceptor.async_accept(
+        [this](
+            const ::std::error_code& errorCode,
+            ::asio::ip::tcp::socket socket
+        ) {
+            if (!errorCode) {
+                ::std::cout << "[Server] New incomming connection: " << socket.remote_endpoint() << ".\n";
+                auto newConnection{ ::std::make_shared<::network::TcpConnection<UserMessageType>>(
+                    *this,
+                    ::std::move(socket)
+                ) };
+                if (newConnection->connectToClient(++m_idCounter)) {
+                    m_incommingConnections.push_back(::std::move(newConnection));
+                    ::std::cout << "[Server:TCP:" << m_incommingConnections.back()->getId()
+                        << "] Connection started.\n";
+                } else {
+                    ::std::cerr << "[ERROR:Server] Connection failed.\n";
+                }
+            } else {
+                ::std::cerr << "[ERROR:Server] New connection error: " << errorCode.message() << ".\n";
+            }
+            this->startReceivingConnections();
+        }
+    );
+}
+
+
+
+// ------------------------------------------------------------------ async - out
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::send(
+    ::network::Message<UserMessageType>& message,
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
+)
+{
+    client->send(message);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::send(
+    ::network::Message<UserMessageType>&& message,
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
+)
+{
+    client->send(::std::move(message));
+}
+
+
+
+// ------------------------------------------------------------------ receive behaviour
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::AServer<UserMessageType>::defaultReceiveBehaviour(
+    ::network::Message<UserMessageType>& message,
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+) -> bool
+{
+    switch (message.getTypeAsSystemType()) {
+    case ::network::Message<UserMessageType>::SystemType::ping:
+        connection->send(message);
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
+
+
+// ------------------------------------------------------------------ user methods
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::onDisconnect(
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> disconnectedConnection
+)
+{
+    ::std::cout << '[' << disconnectedConnection->getId() << "] Disconnected.\n";
+    ::std::erase_if(
+        m_connections,
+        [
+            disconnectedConnection
+        ](
+            const ::std::shared_ptr<::network::TcpConnection<UserMessageType>>& connection
+        ){
+            return connection == disconnectedConnection;
+        }
+    );
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::AServer<UserMessageType>::onAuthentification(
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+) -> bool
+{
+    // TODO: onAuthentification give reson why it failed
+    // TODO: onIdentification and onAuthentification max number fail attempts
+    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onAuthentification: \""
+        << connection->getUserName() << "\".\n";
+    if (connection->getUserName().size() < 3) {
+        ::std::cerr << "[ERROR:AServer:TCP:" << connection->getId()
+            << ":onAuthentification] User name too short\n";
+        return false;
+    }
+    for (const auto& validatedConnection : m_connections) {
+        if (validatedConnection->getUserName() == connection->getUserName()) {
+            ::std::cerr << "[ERROR:AServer:TCP:" << connection->getId()
+                << ":onAuthentification] User name already taken\n";
+            return false;
+        }
+    }
+    return true;
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::onConnectionValidated(
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+)
+{
+    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onConnectionValidated.\n";
+    // start reading/writing tcp
+    connection->startReadMessage();
+    m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
+    m_connections.push_back(::std::move(connection));
+}
+
+
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::AServer<UserMessageType>::onAuthentificationDenial(
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+)
+{
+    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onAuthentificationDenial.\n";
+}
+
+
+
+// ------------------------------------------------------------------ other
+
+template <
+    ::detail::isEnum UserMessageType
+> [[ nodiscard ]] auto ::network::AServer<UserMessageType>::getConnection(
+    ::detail::Id id
+) -> ::std::shared_ptr<::network::TcpConnection<UserMessageType>>
+{
+    return *::std::ranges::find_if(
+        m_connections,
+        [id](const auto& connection){ return connection->getId() == id; }
+    );
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::AServer<UserMessageType>::getConnectionsSharableInformations() const
+    -> ::std::vector<::std::pair<::std::string, ::detail::Id>>
+{
+    ::std::vector<::std::pair<::std::string, ::detail::Id>> sharableInformations{ m_connections.size() };
+    for (const auto& connection : m_connections) {
+        sharableInformations.push_back(connection->getSharableInformations());
+    }
+    return sharableInformations;
+}

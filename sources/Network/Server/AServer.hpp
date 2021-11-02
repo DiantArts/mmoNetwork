@@ -9,9 +9,9 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class AServer
-    : public ::network::ANode<MessageType>
+    : public ::network::ANode<UserMessageType>
 {
 
 public:
@@ -42,29 +42,23 @@ public:
 
     void startReceivingConnections();
 
-    void pullIncommingMessage();
-
-    void pullIncommingMessages();
-
-    void blockingPullIncommingMessages();
-
 
 
     // ------------------------------------------------------------------ async - out
 
     void send(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> client
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
     );
 
     void send(
-        ::network::Message<MessageType>&& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> client
+        ::network::Message<UserMessageType>&& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
     );
 
     void send(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... clients
+        ::network::Message<UserMessageType>& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -73,8 +67,8 @@ public:
     }
 
     void send(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... clients
+        ::network::Message<UserMessageType>&& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> auto... clients
     )
     {
         for (auto& client : {clients...}) {
@@ -83,8 +77,8 @@ public:
     }
 
     void sendToAllClients(
-        ::network::Message<MessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... ignoredClients
+        ::network::Message<UserMessageType>& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
@@ -95,8 +89,8 @@ public:
     }
 
     void sendToAllClients(
-        ::network::Message<MessageType>&& message,
-        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<MessageType>>> auto... ignoredClients
+        ::network::Message<UserMessageType>&& message,
+        ::detail::sameAs<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> auto... ignoredClients
     )
     {
         for (auto& client : m_connections) {
@@ -111,36 +105,47 @@ public:
     // ------------------------------------------------------------------ receive behaviour
 
     virtual auto defaultReceiveBehaviour(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) -> bool
         override final;
 
 
 
-    // ------------------------------------------------------------------ user methods
+    // ------------------------------------------------------------------ user behaviors
 
     // handle the disconnection
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) override;
+
+    // refuses the identification by returning false, username received already
+    [[ nodiscard ]] virtual auto onAuthentification(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) -> bool
+        override;
+
+    virtual void onConnectionValidated(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) override;
+
+
+
+    virtual void onAuthentificationDenial(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) override;
+
 
 
 
     // ------------------------------------------------------------------ other
 
-    // needs inlinment for linkage pupruses
-    inline void validateConnection(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
-    )
-    {
-        m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
-        m_connections.push_back(::std::move(connection));
-    }
-
     [[ nodiscard ]] auto getConnection(
         ::detail::Id id
-    ) -> ::std::shared_ptr<::network::TcpConnection<MessageType>>;
+    ) -> ::std::shared_ptr<::network::TcpConnection<UserMessageType>>;
+
+    [[ nodiscard ]] auto getConnectionsSharableInformations() const
+        -> ::std::vector<::std::pair<::std::string, ::detail::Id>>;
 
 
 
@@ -149,8 +154,8 @@ private:
     // hardware connection to the server
     ::asio::ip::tcp::acceptor m_asioAcceptor;
 
-    ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_incommingConnections;
-    ::std::deque<::std::shared_ptr<::network::TcpConnection<MessageType>>> m_connections;
+    ::std::deque<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> m_incommingConnections;
+    ::std::deque<::std::shared_ptr<::network::TcpConnection<UserMessageType>>> m_connections;
 
     ::detail::Id m_idCounter{ 1 };
 
@@ -161,3 +166,5 @@ private:
 
 
 } // namespace network
+
+#include <Network/Server/AServer.impl.hpp>

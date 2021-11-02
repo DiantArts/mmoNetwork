@@ -30,10 +30,8 @@ TNAME			:=	$(BINDIR)/unit
 C_SRCEXT		:=	.c
 CPP_SRCEXT		:=	.cpp
 CPPM_SRCEXT		:=	.cppm
-
 C_HDREXT		:=	.h
 CPP_HDREXT		:=	.hpp
-
 OBJEXT			:=	.o
 DEPEXT			:=	.d
 PCMEXT			:=	.pcm
@@ -42,7 +40,7 @@ PCHEXT			:=	.gch
 ## wflags
 COMMON_WFLAGS	:=	pedantic all extra missing-field-initializers
 C_WFLAGS		:=	
-CPP_WFLAGS		:=	no-volatile no-address no-nonnull-compare no-unused-variable no-unused-parameter no-class-memaccess no-pointer-arith
+CPP_WFLAGS		:=	no-volatile no-address no-nonnull-compare no-unused-variable no-unused-parameter no-class-memaccess no-pointer-arith no-enum-compare no-sign-compare
 CPPM_WFLAGS		:=
 
 ## flags
@@ -126,6 +124,7 @@ C_SRC1			!=	find $(SRCDIR) -type f -name \*$(C_SRCEXT) ! -path \*/Server/\*
 C_SRC2			!=	find $(SRCDIR) -type f -name \*$(C_SRCEXT) ! -path \*/Client/\*
 CPP_SRC1		!=	find $(SRCDIR) -type f -name \*$(CPP_SRCEXT) ! -path $(MAIN1) ! -path \*/Server/\*
 CPP_SRC2		!=	find $(SRCDIR) -type f -name \*$(CPP_SRCEXT) ! -path $(MAIN2) ! -path \*/Client/\*
+CPP_TST_SRC		!=	find $(SRCDIR) $(TSTDIR) -type f -name \*$(CPP_SRCEXT) ! -path $(MAIN1) ! -path $(MAIN2)
 # CPPM_SRC		!=	find $(SRCDIR) -type f -name \*$(CPPM_SRCEXT) ! -path $(MAIN)
 
 TST_C_SRC		!=	find $(TSTDIR) -type f -name \*$(C_SRCEXT)
@@ -142,8 +141,9 @@ CPP_PCH			:=	$(INCDIR)/pch$(CPP_HDREXT)
 ifeq (auto_tests,$(findstring auto_tests,$(MAKECMDGOALS)))
 C_OBJ1			:=	$(patsubst %$(C_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(C_SRC1) $(TST_C_SRC))
 C_OBJ2			:=	$(patsubst %$(C_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(C_SRC2) $(TST_C_SRC))
-CPP_OBJ1		:=	$(patsubst %$(CPP_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(CPP_SRC1) $(TST_CPP_SRC))
-CPP_OBJ2		:=	$(patsubst %$(CPP_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(CPP_SRC2) $(TST_CPP_SRC))
+CPP_OBJ1		:=	$(patsubst %$(CPP_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(CPP_SRC1))
+CPP_OBJ2		:=	$(patsubst %$(CPP_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(CPP_SRC2))
+TST_OBJ			:=	$(patsubst %$(CPP_SRCEXT),$(OBJDIR)/%$(OBJEXT), $(CPP_TST_SRC))
 CPPM_OBJ		+=	$(patsubst %$(CPPM_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(CPPM_SRC) $(TST_CPPM_SRC))
 else
 C_OBJ1			:=	$(patsubst %$(C_SRCEXT),$(OBJDIR)/%$(OBJEXT),$(C_SRC1))
@@ -269,13 +269,16 @@ compilation1 : $(C_OBJ1) $(CPP_OBJ1)
 compilation2 : $(C_OBJ2) $(CPP_OBJ2)
 	$(PRINTF) "$(LCYAN)[Compilation]$(NORMAL) done\n"
 
+test_compilation : $(TST_OBJ)
+	$(PRINTF) "$(LCYAN)[Compilation]$(NORMAL) done\n"
+
 linkage1 : $(NAME1)$(MODE_EXT)
 	$(PRINTF) "$(LCYAN)[Linkage]$(NORMAL) done\n"
 
 linkage2 : $(NAME2)$(MODE_EXT)
 	$(PRINTF) "$(LCYAN)[Linkage]$(NORMAL) done\n"
 
-test_linkage : $(TEST_NAME)$(MODE_EXT)
+test_linkage : $(TNAME)$(MODE_EXT)
 	$(PRINTF) "$(LCYAN)[Linkage]$(NORMAL) done\n"
 
 ## ============================================================================
@@ -286,8 +289,8 @@ $(NAME1)$(MODE_EXT): compilation1 | libraries externs $(BINDIR)
 $(NAME2)$(MODE_EXT): compilation2 | libraries externs $(BINDIR)
 	$(CXX) $(OUTPUT_OPTION) $(CPP_OBJ2) $(CPPM_OBJ) $(LDFLAGS) $(LDLIBS)
 
-$(TEST_NAME)$(MODE_EXT): compilation1 compilation2 | libraries externs $(BINDIR)
-	$(CXX) $(OUTPUT_OPTION) $(CPP_OBJ) $(CPPM_OBJ) $(LDFLAGS) $(LDLIBS)
+$(TNAME)$(MODE_EXT): test_compilation | libraries externs $(BINDIR)
+	$(CXX) $(OUTPUT_OPTION) $(TST_OBJ) $(LDFLAGS) $(LDLIBS)
 
 force :;
 # libX.a
@@ -450,9 +453,13 @@ auto_gdb2 : linkage2
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_gdb $(ARGV)\n"
 	gdb --args ./$(NAME2)$(MODE_EXT) $(ARGV2)
 
-auto_tests : all
+auto_tests : test_linkage
 	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_gdb $(ARGV)\n"
-	./$(NAME)$(MODE_EXT)
+	./$(TNAME)$(MODE_EXT)
+
+auto_tests2 : test_linkage
+	$(PRINTF) "$(YELLOW)[Binary]$(NORMAL) auto_gdb $(ARGV)\n"
+	./$(TNAME)$(MODE_EXT)
 
 ## phony
 

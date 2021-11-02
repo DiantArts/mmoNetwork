@@ -10,9 +10,9 @@ namespace network {
 
 
 template <
-    ::detail::isEnum MessageType
+    ::detail::isEnum UserMessageType
 > class AClient
-    : public ::network::ANode<MessageType>
+    : public ::network::ANode<UserMessageType>
 {
 
 public:
@@ -47,20 +47,20 @@ public:
     void disconnectFromServer();
 
     void sendToServer(
-        ::network::Message<MessageType>& message
+        ::network::Message<UserMessageType>& message
     );
 
     void sendToServer(
-        ::network::Message<MessageType>&& message
+        ::network::Message<UserMessageType>&& message
     );
 
     // construct and tcpSend
     void sendToServer(
-        MessageType messageType,
+        UserMessageType messageType,
         auto&&... args
     )
     {
-        m_connectionToServer->send(
+        m_tcpConnectionToServer->send(
             ::std::forward<decltype(messageType)>(messageType),
             ::std::forward<decltype(args)>(args)...
         );
@@ -84,12 +84,12 @@ public:
     void closePeerConnection();
 
     void sendToPeer(
-        ::network::Message<MessageType>&& message
+        ::network::Message<UserMessageType>&& message
     );
 
     // construct and tcpSend
     void sendToPeer(
-        MessageType messageType,
+        UserMessageType messageType,
         auto&&... args
     )
     {
@@ -105,32 +105,49 @@ public:
 
 
 
-    // ------------------------------------------------------------------ default behaviours
+    // ------------------------------------------------------------------ user behaviours
 
     virtual auto defaultReceiveBehaviour(
-        ::network::Message<MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) -> bool
         override final;
 
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::TcpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
     ) override;
+
+    // refuses the identification by returning false, used to set username for exemple
+    [[ nodiscard ]] virtual auto onAuthentification(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) -> bool
+        override;
+
+    virtual void onConnectionValidated(
+        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ) override;
+
+
 
     // handle the disconnection
     virtual void onUdpDisconnect(
-        ::std::shared_ptr<::network::UdpConnection<MessageType>> connection
+        ::std::shared_ptr<::network::UdpConnection<UserMessageType>> connection
     );
+
 
 
 protected:
 
     // hardware connection to the server
-    ::std::shared_ptr<::network::TcpConnection<MessageType>> m_connectionToServer;
-    ::std::shared_ptr<::network::UdpConnection<MessageType>> m_connectionToPeer;
+    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> m_tcpConnectionToServer;
+    // TODO: implemente udp connection to server
+    ::std::shared_ptr<::network::UdpConnection<UserMessageType>> m_udpConnectionToServer;
+    ::std::shared_ptr<::network::UdpConnection<UserMessageType>> m_connectionToPeer;
 
 };
 
 
 
 } // namespace network
+
+#include <Network/Client/AClient.impl.hpp>

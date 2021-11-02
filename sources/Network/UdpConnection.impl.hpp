@@ -1,32 +1,24 @@
-#include <pch.hpp>
-#include <Network/UdpConnection.hpp>
-#include <Network/Client/AClient.hpp>
-
-
-// ------------------------------------------------------------------ explicit instantiations
-
-template class ::network::UdpConnection<::network::MessageType>;
-
-
+#pragma once
 
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum MessageType
-> ::network::UdpConnection<MessageType>::UdpConnection(
-    ::network::AClient<MessageType>& owner
+    ::detail::isEnum UserMessageType
+> ::network::UdpConnection<UserMessageType>::UdpConnection(
+    ::network::AClient<UserMessageType>& owner
 )
     : m_owner{ owner }
     , m_socket{ owner.getAsioContext() }
 {
     m_socket.open(::asio::ip::udp::v4());
     m_socket.bind(::asio::ip::udp::endpoint(::asio::ip::udp::v4(), 0));
+    m_bufferIn.setTransmissionProtocol(::network::Message<UserMessageType>::TransmissionProtocol::udp);
 }
 
 
 template <
-    ::detail::isEnum MessageType
-> ::network::UdpConnection<MessageType>::~UdpConnection()
+    ::detail::isEnum UserMessageType
+> ::network::UdpConnection<UserMessageType>::~UdpConnection()
 {
     if (m_socket.is_open()) {
         m_socket.cancel();
@@ -40,8 +32,8 @@ template <
 // ------------------------------------------------------------------ async - connection
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::target(
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::target(
     const ::std::string& host,
     const ::std::uint16_t port
 )
@@ -67,8 +59,8 @@ template <
 }
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::close()
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::close()
 {
     if (m_socket.is_open()) {
         m_socket.cancel();
@@ -79,8 +71,8 @@ template <
 }
 
 template <
-    ::detail::isEnum MessageType
-> auto ::network::UdpConnection<MessageType>::isOpen() const
+    ::detail::isEnum UserMessageType
+> auto ::network::UdpConnection<UserMessageType>::isOpen() const
     -> bool
 {
     return m_socket.is_open();
@@ -91,18 +83,17 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::send(
-    ::network::Message<MessageType>&& message
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::send(
+    ::network::Message<UserMessageType>&& message
 )
 {
     ::asio::post(m_owner.getAsioContext(), ::std::bind_front(
         [this](
-            ::network::Message<MessageType> message
+            ::network::Message<UserMessageType> message
         )
         {
             auto wasOutQueueEmpty{ m_messagesOut.empty() };
-            message.setTransmissionProtocol(::network::TransmissionProtocol::udp);
             m_messagesOut.push_back(::std::move(message));
             if (wasOutQueueEmpty) {
                 this->writeHeader();
@@ -117,24 +108,24 @@ template <
 // ------------------------------------------------------------------ other
 
 template <
-    ::detail::isEnum MessageType
-> auto ::network::UdpConnection<MessageType>::getOwner() const
-    -> const ::network::AClient<MessageType>&
+    ::detail::isEnum UserMessageType
+> auto ::network::UdpConnection<UserMessageType>::getOwner() const
+    -> const ::network::AClient<UserMessageType>&
 {
     return m_owner;
 }
 
 template <
-    ::detail::isEnum MessageType
-> auto ::network::UdpConnection<MessageType>::getPort() const
+    ::detail::isEnum UserMessageType
+> auto ::network::UdpConnection<UserMessageType>::getPort() const
     -> ::std::uint16_t
 {
     return m_socket.local_endpoint().port();
 }
 
 template <
-    ::detail::isEnum MessageType
-> auto ::network::UdpConnection<MessageType>::getAddress() const
+    ::detail::isEnum UserMessageType
+> auto ::network::UdpConnection<UserMessageType>::getAddress() const
     -> ::std::string
 {
     return m_socket.local_endpoint().address().to_string();
@@ -145,15 +136,15 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::writeHeader(
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::writeHeader(
     ::std::size_t bytesAlreadySent /* = 0 */
 )
 {
     m_socket.async_send(
         ::asio::buffer(
             m_messagesOut.front().getHeaderAddr() + bytesAlreadySent,
-            m_messagesOut.front().getHeaderSize() - bytesAlreadySent
+            m_messagesOut.front().getSendingHeaderSize() - bytesAlreadySent
         ),
         [this, bytesAlreadySent](
             const ::std::error_code& errorCode,
@@ -166,7 +157,7 @@ template <
                     ::std::cerr << "[ERROR:UDP] Write header failed: " << errorCode.message() << ".\n";
                     this->close();
                 }
-            } else if (bytesAlreadySent + length < m_messagesOut.front().getHeaderSize()) {
+            } else if (bytesAlreadySent + length < m_messagesOut.front().getSendingHeaderSize()) {
                 this->writeHeader(bytesAlreadySent + length);
             } else {
                 if (!m_messagesOut.front().isBodyEmpty()) {
@@ -183,8 +174,8 @@ template <
 }
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::writeBody(
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::writeBody(
     ::std::size_t bytesAlreadySent /* = 0 */
 )
 {
@@ -222,15 +213,15 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::readHeader(
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::readHeader(
     ::std::size_t bytesAlreadyRead /* = 0 */
 )
 {
     m_socket.async_receive(
         ::asio::buffer(
             m_bufferIn.getHeaderAddr() + bytesAlreadyRead,
-            m_bufferIn.getHeaderSize() - bytesAlreadyRead
+            m_bufferIn.getSendingHeaderSize() - bytesAlreadyRead
         ),
         [this, bytesAlreadyRead](
             const ::std::error_code& errorCode,
@@ -243,7 +234,7 @@ template <
                     ::std::cerr << "[ERROR:UDP] Read header failed: " << errorCode.message() << ".\n";
                     this->close();
                 }
-            } else if (bytesAlreadyRead + length < m_bufferIn.getHeaderSize()) {
+            } else if (bytesAlreadyRead + length < m_bufferIn.getSendingHeaderSize()) {
                 this->readHeader(bytesAlreadyRead + length);
             } else {
                 if (!m_bufferIn.isBodyEmpty()) {
@@ -258,8 +249,8 @@ template <
 }
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::readBody(
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::readBody(
     ::std::size_t bytesAlreadyRead /* = 0 */
 )
 {
@@ -289,9 +280,9 @@ template <
 }
 
 template <
-    ::detail::isEnum MessageType
-> void ::network::UdpConnection<MessageType>::transferBufferToInQueue()
+    ::detail::isEnum UserMessageType
+> void ::network::UdpConnection<UserMessageType>::transferBufferToInQueue()
 {
-    m_owner.pushIncommingMessage(network::OwnedMessage<MessageType>{ m_bufferIn, nullptr });
+    m_owner.pushIncommingMessage(network::OwnedMessage<UserMessageType>{ m_bufferIn, nullptr });
     this->readHeader();
 }
