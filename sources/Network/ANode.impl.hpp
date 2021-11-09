@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::ANode<UserMessageType>::ANode(
     ANode<UserMessageType>::Type type
 )
@@ -11,14 +11,14 @@ template <
 {}
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::ANode<UserMessageType>::~ANode()
 {
     this->stopThread();
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::stopThread()
 {
     m_asioContext.stop();
@@ -32,7 +32,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::pullIncommingMessage()
 {
     auto message{ this->getIncommingMessages().pop_front() };
@@ -53,7 +53,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::pullIncommingMessages()
 {
     while (!this->getIncommingMessages().empty()) {
@@ -62,7 +62,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::blockingPullIncommingMessages()
 {
     this->getIncommingMessages().wait();
@@ -72,16 +72,18 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
+> template <
+    typename... Args
 > void ::network::ANode<UserMessageType>::pushIncommingMessage(
-    auto&&... args
+    Args&&... args
 )
 {
     m_messagesIn.push_back(::std::forward<decltype(args)>(args)...);
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::getIncommingMessages()
     -> ::detail::Queue<::network::OwnedMessage<UserMessageType>>&
 {
@@ -93,7 +95,7 @@ template <
 // ------------------------------------------------------------------ getter
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::getAsioContext()
     -> ::asio::io_context&
 {
@@ -101,7 +103,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::getThreadContext()
     -> ::std::thread&
 {
@@ -109,7 +111,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::getType()
     -> ANode<UserMessageType>::Type
 {
@@ -121,7 +123,7 @@ template <
 // ------------------------------------------------------------------ tcp events
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::onConnect(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
@@ -131,7 +133,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onDisconnect(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -141,7 +143,7 @@ template <
 
 // after receiving
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onReceive(
     ::network::Message<UserMessageType>& message,
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
@@ -151,7 +153,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::onIdentification(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
@@ -161,7 +163,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onConnectionDenial(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -170,7 +172,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onIdentificationDenial(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -179,7 +181,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onAuthentificationDenial(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -192,7 +194,7 @@ template <
 // ------------------------------------------------------------------ udp events
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::ANode<UserMessageType>::onConnect(
     ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
 ) -> bool
@@ -202,7 +204,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onDisconnect(
     ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
 )
@@ -211,7 +213,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::ANode<UserMessageType>::onReceive(
     ::network::Message<UserMessageType>& message,
     ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection

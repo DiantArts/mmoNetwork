@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Detail/Concepts.hpp>
+#include <Detail/Id.hpp>
 
 
 
@@ -9,7 +9,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class Message {
 
 public:
@@ -59,14 +59,18 @@ public:
 
     Message();
 
-    Message(
+    template <
+        typename... Args
+    > Message(
         Message<UserMessageType>::SystemType messageType,
-        auto&&... args
+        Args&&... args
     );
 
-    Message(
+    template <
+        typename... Args
+    > Message(
         UserMessageType messageType,
-        auto&&... args
+        Args&&... args
     );
 
     virtual ~Message();
@@ -76,28 +80,80 @@ public:
     // ------------------------------------------------------------------ insert
     // Insert any POD-like data into the body
 
-    void insert(
-        const ::detail::isSendableData auto& data
+    template <
+        typename Type,
+        typename = typename ::std::enable_if<
+                !::std::is_same<char*, ::std::remove_cv_t<::std::remove_reference_t<Type>>>::value &&
+                (
+                    ::std::is_trivial<Type>::value ||
+                    ::std::is_same<::detail::Id, ::std::remove_cv_t<::std::remove_reference_t<Type>>>::value
+                )
+            >::type
+    > void insert(
+        const Type& data
+    )
+    {
+        // change size and alloc if needed
+        m_header.bodySize += sizeof(data);
+        m_body.resize(m_header.bodySize);
+
+        // insert data into the end of the vector
+        ::std::memcpy(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
+    }
+
+    template <
+        typename Type,
+        typename = typename ::std::enable_if<
+                !::std::is_same<char*, ::std::remove_cv_t<::std::remove_reference_t<Type>>>::value &&
+                (
+                    ::std::is_trivial<Type>::value ||
+                    ::std::is_same<::detail::Id, ::std::remove_cv_t<::std::remove_reference_t<Type>>>::value
+                )
+            >::type
+    > void insert(
+        Type&& data
+    )
+    {
+        // change size and alloc if needed
+        m_header.bodySize += sizeof(data);
+        m_body.resize(m_header.bodySize);
+
+        // insert data into the end of the vector
+        ::std::memmove(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
+    }
+
+    template <
+        typename Type1,
+        typename Type2
+    > void insert(
+        const ::std::pair<Type1, Type2>& data
     );
 
-    void insert(
-        ::detail::isSendableData auto&& data
+    template <
+        typename Type1,
+        typename Type2
+    > void insert(
+        ::std::pair<Type1, Type2>& data
     );
 
-    void insert(
-        const ::std::span<auto>& data
+    template <
+        typename Type
+    > void insert(
+        const ::std::vector<Type>& data
     );
 
-    void insert(
-        const ::std::pair<auto, auto>& data
-    );
-
-    void insert(
-        const ::std::vector<auto>& data
+    template <
+        typename Type
+    > void insert(
+        ::std::vector<Type>& data
     );
 
     void insert(
         const ::std::string& data
+    );
+
+    void insert(
+        ::std::string& data
     );
 
     void insert(
@@ -110,25 +166,18 @@ public:
 
 
 
-    void insertRawMemory(
-        auto* ptrToData,
+    template <
+        typename Type
+    > void insertRawMemory(
+        Type* ptrToData,
         const ::std::size_t size
     );
 
-
-    void insertAll(
-        auto&&... args
+    template <
+        typename... Types
+    > void insertAll(
+        Types&&... types
     );
-
-
-
-    auto operator<<(
-        const auto& data
-    ) -> Message<UserMessageType>&;
-
-    auto operator<<(
-        auto&& data
-    ) -> Message<UserMessageType>&;
 
 
 
@@ -144,16 +193,23 @@ public:
         const ::std::size_t size
     ) -> ::std::vector<::std::byte>;
 
-    void extract(
-        ::detail::isSendableData auto& data
+    template <
+        typename Type
+    > void extract(
+        Type& data
     );
 
-    void extract(
-        ::std::pair<auto, auto>& data
+    template <
+        typename Type1,
+        typename Type2
+    > void extract(
+        ::std::pair<Type1, Type2>& data
     );
 
-    void extract(
-        ::std::vector<auto>& data
+    template <
+        typename Type
+    > void extract(
+        ::std::vector<Type>& data
     );
 
     void extract(
@@ -164,10 +220,6 @@ public:
         typename DataType
     > auto extract()
         -> DataType;
-
-    auto operator>>(
-        auto& data
-    ) -> Message<UserMessageType>&;
 
 
 

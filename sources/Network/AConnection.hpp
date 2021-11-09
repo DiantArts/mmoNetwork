@@ -2,7 +2,6 @@
 
 #include <Detail/Id.hpp>
 #include <Detail/Queue.hpp>
-#include <Detail/Concepts.hpp>
 #include <Network/Message.hpp>
 #include <Network/OwnedMessage.hpp>
 
@@ -10,7 +9,7 @@
 #include <Security/Cipher.hpp>
 #endif
 
-namespace network { template <::detail::isEnum UserMessageType> class ANode; }
+namespace network { template <typename UserMessageType> class ANode; }
 
 
 
@@ -19,7 +18,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class AConnection {
 
 public:

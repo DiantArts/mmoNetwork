@@ -3,18 +3,17 @@
 // ------------------------------------------------------------------ async - Server Authentification
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverAuthentification()
 {
     this->serverReceiveAuthentification();
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverReceiveAuthentification()
 {
-    ::std::this_thread::sleep_for(500ms);
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage([](::network::tcp::Connection<UserMessageType>& self){
         if (
             self.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::authentification
@@ -24,30 +23,36 @@ template <
             return self.disconnect();
         }
         auto password{ self.m_bufferIn.template extract<::std::string>() };
-        self.setUserName(self.m_bufferIn.template extract<::std::string>());
+        auto userName{ self.m_bufferIn.template extract<::std::string>() };
+        ::std::cout << userName << ::std::endl;
+        self.setUserName(userName);
         if (!self.m_owner.onAuthentification(self.shared_from_this())) {
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Authentification failed, "
                 << "onAuthentification returned false.\n";
             self.m_owner.onAuthentificationDenial(self.shared_from_this());
             self.sendAuthentificationDenial();
+            return self.disconnect();
             return self.serverAuthentification();
         }
         ::std::cerr << "[Connection:TCP:" << self.m_id << "] Authentification successful.\n";
         self.serverSendAuthentificationAcceptance();
-    }>();
+    });
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverSendAuthentificationAcceptance()
 {
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        ::std::cerr << "[Connection:TCP:" << self.m_id << "] Authentification successful.\n";
-        self.m_isValid = true;
-        self.m_owner.onConnectionValidated(self.shared_from_this());
-    }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::authentificationAccepted
-    });
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            ::std::cerr << "[Connection:TCP:" << self.m_id << "] Authentification successful.\n";
+            self.m_isValid = true;
+            self.m_owner.onConnectionValidated(self.shared_from_this());
+        },
+        ::network::Message<UserMessageType>{
+            ::network::Message<UserMessageType>::SystemType::authentificationAccepted
+        }
+    );
 }
 
 
@@ -56,7 +61,7 @@ template <
 // TODO: mem error when closing the client after authentification denial
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientAuthentification()
 {
     m_owner.onAuthentification(this->shared_from_this());
@@ -64,22 +69,25 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientSendAuthentification()
 {
-    ::std::this_thread::sleep_for(500ms);
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.clientReceiveAuthentificationAcceptance();
-    }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::authentification, m_userName, ""s
-    });
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            self.clientReceiveAuthentificationAcceptance();
+            ::std::cout << self.getUserName() << ::std::endl;
+        },
+        ::network::Message<UserMessageType>{
+            ::network::Message<UserMessageType>::SystemType::authentification, m_userName, ::std::string("")
+        }
+    );
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientReceiveAuthentificationAcceptance()
 {
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage([](::network::tcp::Connection<UserMessageType>& self){
         if (
             self.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::authentificationDenied
@@ -97,7 +105,7 @@ template <
             ::std::cerr << "[Connection:TCP:" << self.m_id << "] invalid authentification acceptance\n";
             self.disconnect();
         }
-    }>();
+    });
 }
 
 
@@ -105,10 +113,13 @@ template <
 // ------------------------------------------------------------------ async - Error Authentification
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendAuthentificationDenial()
 {
-    this->sendMessage<[](...){}>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::authentificationDenied
-    });
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){},
+        ::network::Message<UserMessageType>{
+            ::network::Message<UserMessageType>::SystemType::authentificationDenied
+        }
+    );
 }

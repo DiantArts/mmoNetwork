@@ -10,7 +10,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class ANode {
 
 public:
@@ -46,8 +46,10 @@ public:
 
 
 
-    void pushIncommingMessage(
-        auto&&... args
+    template <
+        typename... Args
+    > void pushIncommingMessage(
+        Args&&... args
     );
 
     auto getIncommingMessages()

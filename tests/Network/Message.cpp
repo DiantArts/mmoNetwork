@@ -14,7 +14,11 @@ BOOST_AUTO_TEST_CASE(Constructors)
     ::network::Message<Enum> msg1;
     ::network::Message<Enum> msg2{ ::Enum::nothing };
     ::network::Message<Enum> msg3{ ::Enum::nothing, ::std::string{ "hello" } };
-    ::network::Message<Enum> msg4{ ::Enum::nothing, ::std::string{ "hello" }, int{ 3 }, float{ 50 } };
+    ::network::Message<Enum> msg4{ ::Enum::nothing, int{ 3 }, ::std::string{ "hello" }, float{ 50 } };
+    BOOST_TEST(msg3.extract<::std::string>() == ::std::string{ "hello" });
+    BOOST_TEST(msg4.extract<float>() == float{ 50 });
+    BOOST_TEST(msg4.extract<::std::string>() == ::std::string{ "hello" });
+    BOOST_TEST(msg4.extract<int>() == int{ 3 });
 }
 
 
@@ -27,9 +31,9 @@ BOOST_AUTO_TEST_CASE(SingleCpy)
 {
     ::network::Message<Enum> msg;
     int a{ 5 };
-    msg << a;
+    msg.insert(a);
     decltype(a) b;
-    msg >> b;
+    msg.extract(b);
     BOOST_TEST(a == b);
 }
 
@@ -38,9 +42,9 @@ BOOST_AUTO_TEST_CASE(SingleMove)
     ::network::Message<Enum> msg;
     int a{ 5 };
     int aCpy{ a };
-    msg << ::std::move(a);
+    msg.insert(::std::move(a));
     decltype(a) b;
-    msg >> b;
+    msg.extract(b);
     BOOST_TEST(aCpy == b);
 }
 
@@ -48,9 +52,44 @@ BOOST_AUTO_TEST_CASE(SinglePointer)
 {
     ::network::Message<Enum> msg;
     const char* a{ "hello" };
-    msg << a;
+    msg.insert(a);
     ::std::string b;
-    msg >> b;
+    msg.extract(b);
+    BOOST_TEST(a == b);
+}
+
+BOOST_AUTO_TEST_CASE(SingleString)
+{
+    ::network::Message<Enum> msg;
+    ::std::string a{ "hello" };
+    msg.insert(a);
+    decltype(a) b;
+    msg.extract(b);
+    BOOST_TEST(a == b);
+}
+
+BOOST_AUTO_TEST_CASE(Strings)
+{
+    ::network::Message<Enum> msg;
+    ::std::string a{ "hello" };
+    ::std::string b{ "" };
+    msg.insert(a);
+    msg.insert(b);
+    decltype(a) c;
+    decltype(b) d;
+    msg.extract(d);
+    msg.extract(c);
+    BOOST_TEST(a == c);
+    BOOST_TEST(b == d);
+}
+
+BOOST_AUTO_TEST_CASE(SingleIntVector)
+{
+    ::network::Message<Enum> msg;
+    ::std::vector<int> a{ 1, 2, 3, 4, 5, 9, 8, 7, 6 };
+    msg.insert(a);
+    decltype(a) b;
+    msg.extract(b);
     BOOST_TEST(a == b);
 }
 
@@ -65,7 +104,14 @@ BOOST_AUTO_TEST_CASE(MultipleTypes)
     ::std::string f{ "hello" };
     ::std::vector<int> g{ 1, 2, 3, 4, 5, 6 };
     ::std::vector<::std::string> h{ "1", "2", "3", "4", "5", "6" };
-    msg << a << b << c << d << e << f << g << h;
+    msg.insert(a);
+    msg.insert(b);
+    msg.insert(c);
+    msg.insert(d);
+    msg.insert(e);
+    msg.insert(f);
+    msg.insert(g);
+    msg.insert(h);
     int i;
     float j;
     char k;
@@ -74,7 +120,14 @@ BOOST_AUTO_TEST_CASE(MultipleTypes)
     ::std::string n;
     ::std::vector<int> o;
     ::std::vector<::std::string> p;
-    msg >> p >> o >> n >> m >> l >> k >> j >> i;
+    msg.extract(p);
+    msg.extract(o);
+    msg.extract(n);
+    msg.extract(m);
+    msg.extract(l);
+    msg.extract(k);
+    msg.extract(j);
+    msg.extract(i);
     BOOST_TEST(a == i);
     BOOST_TEST(b == j);
     BOOST_TEST(c == k);

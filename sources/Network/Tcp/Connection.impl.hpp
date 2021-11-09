@@ -5,7 +5,7 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::tcp::Connection<UserMessageType>::Connection(
     ::network::ANode<UserMessageType>& owner,
     ::asio::ip::tcp::socket socket
@@ -18,7 +18,7 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::tcp::Connection<UserMessageType>::~Connection()
 {
     if (this->isConnected()) {
@@ -33,7 +33,7 @@ template <
 // ------------------------------------------------------------------ async - connection
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::connectToClient(
     ::detail::Id id
 )
@@ -61,7 +61,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::connect(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -97,7 +97,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::disconnect()
 {
     if (this->isConnected()) {
@@ -110,7 +110,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::isConnected() const
     -> bool
 {
@@ -122,10 +122,12 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
+> template <
+    typename... Args
 > void ::network::tcp::Connection<UserMessageType>::send(
     UserMessageType messageType,
-    auto&&... args
+    Args&&... args
 )
 {
     ::network::Message message{
@@ -146,12 +148,12 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::send(
     ::network::Message<UserMessageType> message
 )
 {
-    ::asio::post(m_owner.getAsioContext(), ::std::bind_front(
+    ::asio::post(m_owner.getAsioContext(), ::std::bind(
         [this, id = m_id](
             ::network::Message<UserMessageType> message
         )
@@ -167,23 +169,25 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > bool ::network::tcp::Connection<UserMessageType>::hasSendingMessagesAwaiting() const
 {
     return !m_messagesOut.empty();
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::writeAwaitingMessages()
 {
-
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.m_messagesOut.remove_front();
-        if (self.hasSendingMessagesAwaiting()) {
-            self.writeAwaitingMessages();
-        }
-    }>(m_messagesOut.front());
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            self.m_messagesOut.remove_front();
+            if (self.hasSendingMessagesAwaiting()) {
+                self.writeAwaitingMessages();
+            }
+        },
+        m_messagesOut.front()
+    );
 }
 
 
@@ -191,13 +195,15 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::startReadMessage()
 {
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.transferBufferToInQueue();
-        self.startReadMessage();
-    }>();
+    this->receiveMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            self.transferBufferToInQueue();
+            self.startReadMessage();
+        }
+    );
 }
 
 
@@ -205,7 +211,7 @@ template <
 // ------------------------------------------------------------------ other
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getSharableInformations() const
     -> ::std::pair<::std::string, ::detail::Id>
 {
@@ -213,7 +219,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getId() const
     -> ::detail::Id
 {
@@ -221,7 +227,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getOwner() const
     -> const ::network::ANode<UserMessageType>&
 {
@@ -229,7 +235,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getPort() const
     -> ::std::uint16_t
 {
@@ -237,7 +243,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getAddress() const
     -> ::std::string
 {
@@ -245,7 +251,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getUserName() const
     -> const ::std::string&
 {
@@ -253,7 +259,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::setUserName(
     ::std::string newName
 )
@@ -267,21 +273,20 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum UserMessageType
-> template <
-    auto successCallback
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendMessage(
+    ::std::function<void(Connection<UserMessageType>&)> successCallback,
     ::network::Message<UserMessageType> message
 )
 {
     ::asio::async_write(
         m_socket,
         ::asio::buffer(message.getHeaderAddr(), message.getSendingHeaderSize()),
-        ::std::bind_front(
-            [this, id = m_id](
-                ::network::Message<UserMessageType> message,
+        ::std::bind(
+            [this, id = m_id, successCallback](
                 const ::std::error_code& errorCode,
-                const ::std::size_t length [[ maybe_unused ]]
+                const ::std::size_t length [[ maybe_unused ]],
+                ::network::Message<UserMessageType> message
             ) {
                 if (errorCode) {
                     if (errorCode == ::asio::error::operation_aborted) {
@@ -299,11 +304,11 @@ template <
                         ::asio::async_write(
                             m_socket,
                             ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
-                            ::std::bind_front(
-                                [this, id = m_id](
-                                    ::network::Message<UserMessageType> message,
+                            ::std::bind(
+                                [this, id = m_id, successCallback](
                                     const ::std::error_code& errorCode,
-                                    const ::std::size_t length [[ maybe_unused ]]
+                                    const ::std::size_t length [[ maybe_unused ]],
+                                    ::network::Message<UserMessageType> message
                                 ) {
                                     if (errorCode) {
                                         if (errorCode == ::asio::error::operation_aborted) {
@@ -322,6 +327,8 @@ template <
                                         successCallback(::std::ref(*this));
                                     }
                                 },
+                                ::std::placeholders::_1,
+                                ::std::placeholders::_2,
                                 ::std::move(message)
                             )
                         );
@@ -330,25 +337,28 @@ template <
                     }
                 }
             },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
             ::std::move(message)
         )
     );
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > template <
     typename Type,
-    auto successCallback
+    typename... Args
 > void ::network::tcp::Connection<UserMessageType>::sendRawData(
-    auto&&... args
+    ::std::function<void(Connection<UserMessageType>&)> successCallback,
+    Args&&... args
 )
 {
     auto pointerToData{ new Type{ ::std::forward<decltype(args)>(args)... } };
     ::asio::async_write(
         m_socket,
         ::asio::buffer(pointerToData, sizeof(Type)),
-        [this, pointerToData, id = m_id](
+        [this, pointerToData, id = m_id, successCallback](
             const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -372,18 +382,19 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > template <
-    auto successCallback
+    typename Type
 > void ::network::tcp::Connection<UserMessageType>::sendRawData(
-    ::detail::isPointer auto pointerToData,
+    ::std::function<void(Connection<UserMessageType>&)> successCallback,
+    Type* pointerToData,
     ::std::size_t dataSize
 )
 {
     ::asio::async_write(
         m_socket,
         ::asio::buffer(pointerToData, dataSize),
-        [this, id = m_id](
+        [this, id = m_id, successCallback](
             const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -410,15 +421,15 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum UserMessageType
-> template <
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::receiveMessage()
+    typename UserMessageType
+> void ::network::tcp::Connection<UserMessageType>::receiveMessage(
+    ::std::function<void(Connection<UserMessageType>&)> successCallback
+)
 {
     ::asio::async_read(
         m_socket,
         ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getSendingHeaderSize()),
-        [this, id = m_id](
+        [this, id = m_id, successCallback](
             const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -439,7 +450,7 @@ template <
                     ::asio::async_read(
                         m_socket,
                         ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
-                        [this, id = m_id](
+                        [this, id = m_id, successCallback](
                             const ::std::error_code& errorCode,
                             const ::std::size_t length
                         ) {
@@ -469,17 +480,18 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > template <
-    typename Type,
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::receiveRawData()
+    typename Type
+> void ::network::tcp::Connection<UserMessageType>::receiveRawData(
+    ::std::function<void(Connection<UserMessageType>&)> successCallback
+)
 {
     auto pointerToData{ new ::std::array<::std::byte, sizeof(Type)> };
     ::asio::async_read(
         m_socket,
         ::asio::buffer(pointerToData->data(), sizeof(Type)),
-        [this, pointerToData, id = m_id](
+        [this, pointerToData, id = m_id, successCallback](
             const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -503,18 +515,19 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > template <
-    auto successCallback
+    typename Type
 > void ::network::tcp::Connection<UserMessageType>::receiveToRawData(
-    ::detail::isPointer auto pointerToData,
+    ::std::function<void(Connection<UserMessageType>&)> successCallback,
+    Type* pointerToData,
     ::std::size_t dataSize
 )
 {
     ::asio::async_read(
         m_socket,
         ::asio::buffer(pointerToData, dataSize),
-        [this, pointerToData, id = m_id](
+        [this, pointerToData, id = m_id, successCallback](
             const ::std::error_code& errorCode,
             const ::std::size_t length
         ) {
@@ -537,7 +550,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::transferBufferToInQueue()
 {
     if (m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {

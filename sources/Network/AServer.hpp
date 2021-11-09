@@ -6,6 +6,6 @@
 
 namespace network {
     template <
-        ::detail::isEnum UserMessageType
+        typename UserMessageType
     > using AServer = ::network::server::AServer<UserMessageType>;
 }

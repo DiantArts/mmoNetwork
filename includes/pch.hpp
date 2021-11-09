@@ -27,8 +27,6 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <ranges>
-#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -36,31 +34,16 @@
 #include <variant>
 #include <thread>
 #include <utility>
-#include <concepts>
-#include <bitset>
 #include <initializer_list>
 #include <compare>
 #include <cstring>
-
-using ::std::string_literals::operator""s;
-using ::std::literals::string_view_literals::operator""sv;
-using ::std::chrono_literals::operator""ms;
+#include <type_traits>
 
 
 
 #include <debugMacros.hpp>
 
 
-
-// #include <boost/array.hpp>
-// #include <boost/enable_shared_from_this.hpp>
-// #define BOOST_BIND_GLOBAL_PLACEHOLDERS
-// #include <boost/bind.hpp>
-
-// #define ASIO_STANDALONE
-// #include <boost/asio.hpp>
-// #include <boost/asio/ts/buffer.hpp>
-// #include <boost/asio/ts/internet.hpp>
 
 #define ASIO_STANDALONE
 #include <asio.hpp>

@@ -3,21 +3,27 @@
 // ------------------------------------------------------------------ async - Common identification
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::identification()
 {
 #ifdef ENABLE_ENCRYPTION
     // send public key
-    this->sendRawData<[](...){}>(m_cipher.getPublicKeyAddr(), m_cipher.getPublicKeySize());
+    this->sendRawData(
+        [](::network::tcp::Connection<UserMessageType>& self){},
+        m_cipher.getPublicKeyAddr(), m_cipher.getPublicKeySize()
+    );
 
     // read public key
-    this->receiveToRawData<[](::network::tcp::Connection<UserMessageType>& self){
-        if (self.m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
-            self.serverHandshake();
-        } else {
-            self.clientHandshake();
-        }
-    }>(m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize());
+    this->receiveToRawData(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            if (self.m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
+                self.serverHandshake();
+            } else {
+                self.clientHandshake();
+            }
+        },
+        m_cipher.getTargetPublicKeyAddr(), m_cipher.getPublicKeySize()
+    );
 #else // ENABLE_ENCRYPTION
     if (m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
         this->serverSendIdentificationAcceptance();
@@ -29,14 +35,17 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendIdentificationDenial()
 {
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.disconnect();
-    }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id
-    });
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            self.disconnect();
+        },
+        ::network::Message<UserMessageType>{
+            ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id,
+        }
+    );
 }
 
 
@@ -48,7 +57,7 @@ template <
 // ------------------------------------------------------------------ async - Server identification
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverHandshake()
 {
     // TODO generating random data through sodium
@@ -63,16 +72,19 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverSendHandshake(
     ::std::vector<::std::byte>&& encryptedBaseValue
 )
 {
-    this->sendRawData<[](...){}>(encryptedBaseValue.data(), encryptedBaseValue.size());
+    this->sendRawData(
+        [](::network::tcp::Connection<UserMessageType>& self){},
+        encryptedBaseValue.data(), encryptedBaseValue.size()
+    );
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverReadHandshake(
     ::std::uint64_t& baseValue,
     ::std::array<
@@ -132,7 +144,7 @@ template <
 // TODO: clean code, remove news/deletes
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientHandshake()
 {
     this->clientReadHandshake(
@@ -141,7 +153,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientReadHandshake(
     ::std::array<
         ::std::byte,
@@ -175,7 +187,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientResolveHandshake(
     ::std::array<
         ::std::byte,
@@ -222,15 +234,18 @@ template <
 // ------------------------------------------------------------------ async - Server identificationAcceptance
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverSendIdentificationAcceptance()
 {
 
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.serverAuthentification();
-    }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id
-    });
+    this->sendMessage(
+        [](::network::tcp::Connection<UserMessageType>& self){
+            self.serverAuthentification();
+        },
+        ::network::Message<UserMessageType>{
+            ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id
+        }
+    );
 }
 
 
@@ -238,10 +253,10 @@ template <
 // ------------------------------------------------------------------ async - Client identificationAcceptance
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientWaitIdentificationAcceptance()
 {
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage([](::network::tcp::Connection<UserMessageType>& self){
         if (
             self.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::identificationAccepted
@@ -262,5 +277,5 @@ template <
                 << "unexpected message received.\n";
             self.disconnect();
         }
-    }>();
+    });
 }

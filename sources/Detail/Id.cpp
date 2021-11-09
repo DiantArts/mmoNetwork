@@ -2,6 +2,22 @@
 #include <Detail/Id.hpp>
 
 
+
+// ------------------------------------------------------------------ *structors
+
+::detail::Id::Id() = default;
+
+::detail::Id::Id(
+    Id::Type baseValue
+)
+    : m_value{ static_cast<detail::Id::Type>(baseValue) }
+{}
+
+
+::detail::Id::~Id() = default;
+
+
+
 // ------------------------------------------------------------------ Get
 
 ::detail::Id::operator ::std::string() const
@@ -40,14 +56,4 @@ auto ::detail::Id::operator++(int)
 void ::detail::Id::increment()
 {
     ++m_value;
-}
-
-
-
-// ------------------------------------------------------------------ Others
-
-auto ::detail::Id::operator<=>(const Id& other)
-    -> ::std::weak_ordering
-{
-    return m_value <=> other.m_value;
 }

@@ -38,10 +38,11 @@ private:
         switch (message.getType()) {
         case ::MessageType::startCall: {
             ::detail::Id targetId;
-            message >> targetId;
+            message.extract(targetId);
             ::std::cout << "[" << connection->getUserName() << "] start call with [" << targetId << "].\n";
             message.setType(::MessageType::incommingCall);
-            message << connection->getAddress() << connection->getId();
+            message.insert(connection->getAddress());
+            message.insert(connection->getId());
             try {
                 this->getConnection(targetId)->send(message);
             } catch (...) {
@@ -51,9 +52,9 @@ private:
             break;
         } case ::MessageType::acceptCall: {
             ::detail::Id targetId;
-            message >> targetId;
+            message.extract(targetId);
             ::std::cout << "[" << connection->getUserName() << "] accepted [" << targetId << "]'s call.\n";
-            message << connection->getAddress();
+            message.insert(connection->getAddress());
             try {
                 this->getConnection(targetId)->send(message);
             } catch (...) {
@@ -63,7 +64,7 @@ private:
             break;
         } case ::MessageType::refuseCall: {
             ::detail::Id targetId;
-            message >> targetId;
+            message.extract(targetId);
             ::std::cout << "[" << connection->getUserName() << "] refused [" << targetId << "]'s call.\n";
             try {
                 this->getConnection(targetId)->send(message);

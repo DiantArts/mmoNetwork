@@ -1,20 +1,5 @@
 #pragma once
 
-// ------------------------------------------------------------------ *structors
-
-// default value is 0
-constexpr ::detail::Id::Id() = default;
-
-constexpr ::detail::Id::Id(
-    ::std::integral auto baseValue
-)
-    : m_value{ static_cast<detail::Id::Type>(baseValue) }
-{}
-
-constexpr ::detail::Id::~Id() = default;
-
-
-
 // ------------------------------------------------------------------ Get
 
 constexpr auto ::detail::Id::get() const

@@ -9,7 +9,7 @@ namespace network::server {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class AServer
     : public ::network::ANode<UserMessageType>
 {
@@ -66,19 +66,18 @@ public:
         ::detail::Id clientId
     );
 
-    void send(
+    template <
+        typename... Args
+    > void send(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... clients
+        Args... clients
     );
 
-    void sendToAllClients(
+    template <
+        typename... Args
+    > void sendToAllClients(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... ignoredClients
-    );
-
-    void sendToAllClients(
-        const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::detail::Id> auto... ignoredClientIds
+        Args... ignoredClients // sharedptr
     );
 
 

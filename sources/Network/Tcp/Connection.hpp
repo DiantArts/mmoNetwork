@@ -9,7 +9,7 @@ namespace network::tcp {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class Connection
     : public ::network::AConnection<UserMessageType>
     , public ::std::enable_shared_from_this<Connection<UserMessageType>>
@@ -49,9 +49,11 @@ public:
 
     // ------------------------------------------------------------------ async - out
 
-    void send(
+    template <
+        typename... Args
+    > void send(
         UserMessageType messageType,
-        auto&&... args
+        Args&&... args
     );
 
     void send(
@@ -107,23 +109,24 @@ private:
 
     // ------------------------------------------------------------------ async - out
 
-    template <
-        auto successCallback
-    > void sendMessage(
+    void sendMessage(
+        ::std::function<void(Connection<UserMessageType>&)> successCallback,
         ::network::Message<UserMessageType> message
     );
 
     template <
         typename Type,
-        auto successCallback
+        typename... Args
     > void sendRawData(
-        auto&&... args
+        ::std::function<void(Connection<UserMessageType>&)> successCallback,
+        Args&&... args
     );
 
     template <
-        auto successCallback
+        typename Type
     > void sendRawData(
-        ::detail::isPointer auto pointerToData,
+        ::std::function<void(Connection<UserMessageType>&)> successCallback,
+        Type* pointerToData,
         ::std::size_t dataSize
     );
 
@@ -131,19 +134,21 @@ private:
 
     // ------------------------------------------------------------------ async - in
 
-    template <
-        auto successCallback
-    > void receiveMessage();
+    void receiveMessage(
+        ::std::function<void(Connection<UserMessageType>&)> successCallback
+    );
 
     template <
-        typename Type,
-        auto successCallback
-    > void receiveRawData();
+        typename Type
+    > void receiveRawData(
+        ::std::function<void(Connection<UserMessageType>&)> successCallback
+    );
 
     template <
-        auto successCallback
+        typename Type
     > void receiveToRawData(
-        ::detail::isPointer auto pointerToData,
+        ::std::function<void(Connection<UserMessageType>&)> successCallback,
+        Type* pointerToData,
         ::std::size_t dataSize
     );
 

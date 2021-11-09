@@ -4,9 +4,9 @@
 
 
 
-namespace network { template <::detail::isEnum UserMessageType> class AConnection; }
-namespace network::tcp { template <::detail::isEnum UserMessageType> class Connection; }
-namespace network::udp { template <::detail::isEnum UserMessageType> class Connection; }
+namespace network { template <typename UserMessageType> class AConnection; }
+namespace network::tcp { template <typename UserMessageType> class Connection; }
+namespace network::udp { template <typename UserMessageType> class Connection; }
 
 
 
@@ -15,7 +15,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class OwnedMessage
     : public ::network::Message<UserMessageType>
 {

@@ -10,7 +10,7 @@ namespace network::client {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class AClient
     : public ::network::ANode<UserMessageType>
 {
@@ -60,9 +60,11 @@ public:
     );
 
     // construct and tcpSend
-    void sendToServer(
+    template <
+        typename... Args
+    > void sendToServer(
         UserMessageType messageType,
-        auto&&... args
+        Args&&... args
     )
     {
         m_tcpConnectionToServer->send(
@@ -93,9 +95,11 @@ public:
     );
 
     // construct and tcpSend
-    void sendToPeer(
+    template <
+        typename... Args
+    > void sendToPeer(
         UserMessageType messageType,
-        auto&&... args
+        Args&&... args
     )
     {
         m_connectionToPeer->send(

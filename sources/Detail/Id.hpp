@@ -17,13 +17,13 @@ public:
     // ------------------------------------------------------------------ *structors
 
     // default value is 0
-    constexpr Id();
+    Id();
 
-    constexpr Id(
-        ::std::integral auto baseValue
+    Id(
+        Id::Type baseValue
     );
 
-    constexpr ~Id();
+    ~Id();
 
 
 
@@ -53,13 +53,6 @@ public:
         -> Id::Type;
 
     void increment();
-
-
-
-    // ------------------------------------------------------------------ Others
-
-    [[ nodiscard ]] auto operator<=>(const Id& other)
-        -> ::std::weak_ordering;
 
 
 

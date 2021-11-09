@@ -78,7 +78,9 @@ public:
             ::detail::Id callerId;
             ::std::string udpAddr;
             ::std::uint16_t udpPort;
-            message >> callerId >> udpAddr >> udpPort;
+            message.extract(callerId);
+            message.extract(udpAddr);
+            message.extract(udpPort);
             ::std::cout << "Incomming call from [" << callerId << "] ("
                 << udpAddr << ":" << udpPort << ").\n";
             if (!this->isConnectedToPeer()) {
@@ -90,7 +92,8 @@ public:
         } case ::MessageType::acceptCall: {
             ::std::string udpAddr;
             ::std::uint16_t udpPort;
-            message >> udpAddr >> udpPort;
+            message.extract(udpAddr);
+            message.extract(udpPort);
             this->targetPeer(udpAddr, udpPort);
             ::std::cout << "call accepted: "<< udpAddr << ":" << udpPort << ".\n";
             break;

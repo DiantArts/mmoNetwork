@@ -9,7 +9,7 @@ namespace network::udp {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class Connection
     : public ::network::AConnection<UserMessageType>
     , public ::std::enable_shared_from_this<Connection<UserMessageType>>
@@ -44,9 +44,11 @@ public:
 
     // ------------------------------------------------------------------ async - out
 
-    void send(
+    template <
+        typename... Args
+    > void send(
         UserMessageType messageType,
-        auto&&... args
+        Args&&... args
     );
 
     void send(

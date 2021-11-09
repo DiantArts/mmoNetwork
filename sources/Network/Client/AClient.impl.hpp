@@ -3,13 +3,13 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::client::AClient<UserMessageType>::AClient()
     : ::network::ANode<UserMessageType>{ ::network::ANode<UserMessageType>::Type::client }
 {}
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::client::AClient<UserMessageType>::~AClient()
 {
     this->stopThread();
@@ -21,7 +21,7 @@ template <
 // ------------------------------------------------------------------ connection
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::disconnect()
 {
 
@@ -31,7 +31,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::isConnected() const
     -> bool
 {
@@ -39,7 +39,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::getUdpPort() const
     -> ::std::uint16_t
 {
@@ -51,7 +51,7 @@ template <
 // ------------------------------------------------------------------ server
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::startConnectingToServer(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -76,7 +76,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::connectToServer(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -87,7 +87,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::disconnectFromServer()
 {
     if (m_tcpConnectionToServer) {
@@ -99,7 +99,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::sendToServer(
     ::network::Message<UserMessageType>& message
 )
@@ -108,7 +108,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::sendToServer(
     ::network::Message<UserMessageType>&& message
 )
@@ -119,7 +119,7 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::isConnectedToServer() const
     -> bool
 {
@@ -131,14 +131,14 @@ template <
 // ------------------------------------------------------------------ peer
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::openUdpConnection()
 {
     m_connectionToPeer = ::std::make_shared<::network::udp::Connection<UserMessageType>>(*this);
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::targetPeer(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -157,7 +157,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::closePeerConnection()
 {
     if (this->isConnectedToPeer()) {
@@ -168,7 +168,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::sendToPeer(
     ::network::Message<UserMessageType>&& message
 )
@@ -177,7 +177,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::isConnectedToPeer() const
     -> bool
 {
@@ -189,7 +189,7 @@ template <
 // ------------------------------------------------------------------ default behaviours
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
     ::network::Message<UserMessageType>& message,
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
@@ -203,7 +203,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
     ::network::Message<UserMessageType>& message,
     ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
@@ -221,7 +221,7 @@ template <
 // ------------------------------------------------------------------ user behaviours
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::onDisconnect(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -233,19 +233,19 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > auto ::network::client::AClient<UserMessageType>::onAuthentification(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
 
 {
     ::std::cout << "[Client:TCP:" << connection->getId() << "] onAuthentification.\n";
-    connection->setUserName("user"s + ::std::to_string(connection->getId()));
+    connection->setUserName(::std::string("user") + ::std::to_string(connection->getId()));
     return true;
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::onConnectionValidated(
     ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
@@ -261,7 +261,7 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > void ::network::client::AClient<UserMessageType>::onDisconnect(
     ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
 )

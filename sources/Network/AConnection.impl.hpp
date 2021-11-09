@@ -5,7 +5,7 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::AConnection<UserMessageType>::AConnection(
     ::network::ANode<UserMessageType>& owner
 )
@@ -14,5 +14,5 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > ::network::AConnection<UserMessageType>::~AConnection() = default;

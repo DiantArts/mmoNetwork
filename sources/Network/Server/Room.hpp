@@ -9,7 +9,7 @@ namespace network::server {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    typename UserMessageType
 > class Room
     : public ::network::ANode<UserMessageType>
 {
