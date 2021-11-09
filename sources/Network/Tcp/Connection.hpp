@@ -1,40 +1,31 @@
 #pragma once
 
-#include <Detail/Queue.hpp>
-#include <Detail/Id.hpp>
-#include <Detail/Concepts.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
-
-#ifdef ENABLE_ENCRYPTION
-#include <Security/Cipher.hpp>
-#endif
-
-namespace network { template <::detail::isEnum UserMessageType> class ANode; }
+#include <Network/AConnection.hpp>
 
 
 
-namespace network {
+namespace network::tcp {
 
 
 
 template <
     ::detail::isEnum UserMessageType
-> class TcpConnection
-    : public ::std::enable_shared_from_this<TcpConnection<UserMessageType>>
+> class Connection
+    : public ::network::AConnection<UserMessageType>
+    , public ::std::enable_shared_from_this<Connection<UserMessageType>>
 {
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
-    TcpConnection(
+    Connection(
         ::network::ANode<UserMessageType>& owner,
         ::asio::ip::tcp::socket socket
     );
 
     // doesnt call onDisconnect
-    ~TcpConnection();
+    ~Connection();
 
 
 
@@ -87,7 +78,7 @@ public:
 
     // ------------------------------------------------------------------ other
 
-    // TODO: create struct
+    // TODO: create struct sharable info
     [[ nodiscard ]] auto getSharableInformations() const
         -> ::std::pair<::std::string, ::detail::Id>;
 
@@ -117,24 +108,20 @@ private:
     // ------------------------------------------------------------------ async - out
 
     template <
-        auto successCallback,
-        auto failureHeaderCallback,
-        auto failureBodyCallback
+        auto successCallback
     > void sendMessage(
         ::network::Message<UserMessageType> message
     );
 
     template <
         typename Type,
-        auto successCallback,
-        auto failureCallback
+        auto successCallback
     > void sendRawData(
         auto&&... args
     );
 
     template <
-        auto successCallback,
-        auto failureCallback
+        auto successCallback
     > void sendRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
@@ -145,20 +132,16 @@ private:
     // ------------------------------------------------------------------ async - in
 
     template <
-        auto successCallback,
-        auto failureHeaderCallback,
-        auto failureBodyCallback
+        auto successCallback
     > void receiveMessage();
 
     template <
         typename Type,
-        auto successCallback,
-        auto failureCallback
+        auto successCallback
     > void receiveRawData();
 
     template <
-        auto successCallback,
-        auto failureCallback
+        auto successCallback
     > void receiveToRawData(
         ::detail::isPointer auto pointerToData,
         ::std::size_t dataSize
@@ -261,28 +244,24 @@ private:
 
 private:
 
-    ::network::ANode<UserMessageType>& m_owner;
-
-    // tcp
     ::asio::ip::tcp::socket m_socket;
-    ::network::Message<UserMessageType> m_bufferIn;
-    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
-
-    // security module
-#ifdef ENABLE_ENCRYPTION
-    ::security::Cipher m_cipher;
-#endif // ENABLE_ENCRYPTION
 
     ::detail::Id m_id{ 1 };
+    ::std::string m_userName;
 
     bool m_isValid{ false };
 
-    ::std::string m_userName;
+    using ::network::AConnection<UserMessageType>::m_owner;
+    using ::network::AConnection<UserMessageType>::m_bufferIn;
+    using ::network::AConnection<UserMessageType>::m_messagesOut;
+#ifdef ENABLE_ENCRYPTION
+    using ::network::AConnection<UserMessageType>::m_cipher;
+#endif // ENABLE_ENCRYPTION
 
 };
 
 
 
-} // namespace network
+} // namespace network::tcp
 
-#include <Network/TcpConnection.impl.hpp>
+#include <Network/Tcp/Connection.impl.hpp>

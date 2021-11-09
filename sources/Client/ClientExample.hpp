@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Network/Client/AClient.hpp>
+#include <Network/AClient.hpp>
 #include <MessageType.hpp>
 
 
@@ -68,9 +68,9 @@ public:
         this->closePeerConnection();
     }
 
-    virtual void onTcpReceive(
+    virtual void onReceive(
         ::network::Message<::MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
@@ -107,9 +107,9 @@ public:
         }
     }
 
-    virtual void onUdpReceive(
+    virtual void onReceive(
         ::network::Message<::MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
+        ::std::shared_ptr<::network::udp::Connection<::MessageType>> connection
     ) override
     {
         switch (message.getType()) {

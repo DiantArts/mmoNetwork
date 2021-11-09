@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     ::std::thread thread;
 
     try {
-        if (!client.connectToServer(argv[1], ::std::atoi(argv[2]))) {
+        if (!client.startConnectingToServer(argv[1], ::std::atoi(argv[2]))) {
             return EXIT_FAILURE;
         }
 

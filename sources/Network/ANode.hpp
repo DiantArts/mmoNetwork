@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Detail/Id.hpp>
-#include <Detail/Concepts.hpp>
-#include <Network/TcpConnection.hpp>
+#include <Network/Tcp/Connection.hpp>
+#include <Network/Udp/Connection.hpp>
 
 
 
@@ -69,71 +68,85 @@ public:
 
 
 
-    // ------------------------------------------------------------------ user methods
-
-    // refuses the connection by returning false
-    virtual auto onConnect(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    ) -> bool;
-
-    // handle the disconnection
-    virtual void onDisconnect(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    );
-
-
-    // refuses the identification by returning false
-    [[ nodiscard ]] virtual auto onIdentification(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    ) -> bool;
-
-    // refuses the identification by returning false
-    [[ nodiscard ]] virtual auto onAuthentification(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    ) -> bool
-        = 0;
-
-    virtual void onConnectionValidated(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    ) = 0;
-
-
-
-    // after receiving
-    virtual void onTcpReceive(
-        ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    );
-
-    virtual void onUdpReceive(
-        ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
-    );
+    // ------------------------------------------------------------------ default behaviors
 
     // returns true meaning the message is already handled
     virtual auto defaultReceiveBehaviour(
         ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ) -> bool = 0;
+
+    virtual auto defaultReceiveBehaviour(
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
     ) -> bool = 0;
 
 
 
-    // ------------------------------------------------------------------ error user methods
+    // ------------------------------------------------------------------ tcp events
+
+    // refuses the connection by returning false
+    virtual auto onConnect(
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ) -> bool;
+
+    // handle the disconnection
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    );
+
+    // after receiving
+    virtual void onReceive(
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    );
+
+    // refuses the identification by returning false
+    [[ nodiscard ]] virtual auto onIdentification(
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ) -> bool;
+
+    // refuses the identification by returning false
+    [[ nodiscard ]] virtual auto onAuthentification(
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ) -> bool
+        = 0;
+
+    virtual void onConnectionValidated(
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ) = 0;
+
     // server: denides
     // client: is denided
-
     virtual void onConnectionDenial(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     );
 
     // TODO: ban list
     virtual void onIdentificationDenial(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     );
 
     // TODO: implemente
     virtual void onAuthentificationDenial(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    );
+
+
+
+    // ------------------------------------------------------------------ udp events
+
+    virtual auto onConnect(
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+    ) -> bool;
+
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+    );
+
+    virtual void onReceive(
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
     );
 
 

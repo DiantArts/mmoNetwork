@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Network/Server/AServer.hpp>
+#include <Network/AServer.hpp>
 #include <MessageType.hpp>
 
 
@@ -30,9 +30,9 @@ private:
     // ------------------------------------------------------------------ user methods
 
     // after receiving
-    virtual void onTcpReceive(
+    virtual void onReceive(
         ::network::Message<::MessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<::MessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<::MessageType>> connection
     ) override
     {
         switch (message.getType()) {
@@ -77,7 +77,6 @@ private:
             this->sendToAllClients(
                 ::network::Message{
                     ::MessageType::message,
-                    ::network::TransmissionProtocol::tcp,
                     message.extract<::std::string>(),
                     connection->getUserName()
                 },

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Detail/Concepts.hpp>
-#include <Network/TransmissionProtocol.hpp>
 
 
 
@@ -70,7 +69,7 @@ public:
         auto&&... args
     );
 
-    ~Message();
+    virtual ~Message();
 
 
 

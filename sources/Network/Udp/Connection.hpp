@@ -1,35 +1,30 @@
 #pragma once
 
-#include <Detail/Queue.hpp>
-#include <Detail/Id.hpp>
-#include <Detail/Concepts.hpp>
-#include <Network/Message.hpp>
-#include <Network/OwnedMessage.hpp>
-
-namespace network { template <::detail::isEnum UserMessageType> class AClient; }
+#include <Network/AConnection.hpp>
 
 
 
-namespace network {
+namespace network::udp {
 
 
 
 template <
     ::detail::isEnum UserMessageType
-> class UdpConnection
-    : public ::std::enable_shared_from_this<UdpConnection<UserMessageType>>
+> class Connection
+    : public ::network::AConnection<UserMessageType>
+    , public ::std::enable_shared_from_this<Connection<UserMessageType>>
 {
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
-    UdpConnection(
-        ::network::AClient<UserMessageType>& owner
+    Connection(
+        ::network::ANode<UserMessageType>& owner
     );
 
     // doesnt call onDisconnect
-    ~UdpConnection();
+    ~Connection();
 
 
 
@@ -52,28 +47,10 @@ public:
     void send(
         UserMessageType messageType,
         auto&&... args
-    )
-    {
-        ::network::Message message{
-            ::std::forward<decltype(messageType)>(messageType),
-            ::network::TransmissionProtocol::udp,
-            ::std::forward<decltype(args)>(args)...
-        };
-        ::asio::post(
-            m_owner.getAsioContext(),
-            [this, message]()
-            {
-                auto wasOutQueueEmpty{ m_messagesOut.empty() };
-                m_messagesOut.push_back(::std::move(message));
-                if (wasOutQueueEmpty) {
-                    this->writeHeader();
-                }
-            }
-        );
-    }
+    );
 
     void send(
-        ::network::Message<UserMessageType>&& message
+        ::network::Message<UserMessageType> message
     );
 
 
@@ -81,7 +58,7 @@ public:
     // ------------------------------------------------------------------ other
 
     [[ nodiscard ]] auto getOwner() const
-        -> const ::network::AClient<UserMessageType>&;
+        -> const ::network::ANode<UserMessageType>&;
 
     [[ nodiscard ]] auto getPort() const
         -> ::std::uint16_t;
@@ -121,16 +98,19 @@ private:
 
 private:
 
-    ::network::AClient<UserMessageType>& m_owner;
-
     ::asio::ip::udp::socket m_socket;
-    ::network::Message<UserMessageType> m_bufferIn;
-    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
+
+    using ::network::AConnection<UserMessageType>::m_owner;
+    using ::network::AConnection<UserMessageType>::m_bufferIn;
+    using ::network::AConnection<UserMessageType>::m_messagesOut;
+#ifdef ENABLE_ENCRYPTION
+    using ::network::AConnection<UserMessageType>::m_cipher;
+#endif // ENABLE_ENCRYPTION
 
 };
 
 
 
-} // namespace network
+} // namespace network::udp
 
-#include <Network/UdpConnection.impl.hpp>
+#include <Network/Udp/Connection.impl.hpp>

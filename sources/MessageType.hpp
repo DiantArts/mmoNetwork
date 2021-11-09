@@ -4,7 +4,7 @@
 
 enum class MessageType : ::std::uint16_t
 {
-    message, // TODO imlement
+    message, // TODO implement
     messageAll,
     startCall,
     incommingCall,

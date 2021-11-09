@@ -4,13 +4,13 @@
 
 template <
     ::detail::isEnum UserMessageType
-> ::network::AClient<UserMessageType>::AClient()
+> ::network::client::AClient<UserMessageType>::AClient()
     : ::network::ANode<UserMessageType>{ ::network::ANode<UserMessageType>::Type::client }
 {}
 
 template <
     ::detail::isEnum UserMessageType
-> ::network::AClient<UserMessageType>::~AClient()
+> ::network::client::AClient<UserMessageType>::~AClient()
 {
     this->stopThread();
     this->disconnect();
@@ -22,7 +22,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::disconnect()
+> void ::network::client::AClient<UserMessageType>::disconnect()
 {
 
     this->disconnectFromServer();
@@ -32,7 +32,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::isConnected() const
+> auto ::network::client::AClient<UserMessageType>::isConnected() const
     -> bool
 {
     return this->isConnectedToServer() || this->isConnectedToPeer();
@@ -40,7 +40,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::getUdpPort() const
+> auto ::network::client::AClient<UserMessageType>::getUdpPort() const
     -> ::std::uint16_t
 {
     return m_connectionToPeer->getPort();
@@ -52,13 +52,13 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::connectToServer(
+> auto ::network::client::AClient<UserMessageType>::startConnectingToServer(
     const ::std::string& host,
     const ::std::uint16_t port
 ) -> bool
 {
     try {
-        m_tcpConnectionToServer = ::std::make_shared<::network::TcpConnection<UserMessageType>>(
+        m_tcpConnectionToServer = ::std::make_shared<::network::tcp::Connection<UserMessageType>>(
             *this,
             ::asio::ip::tcp::socket(this->getAsioContext())
         );
@@ -77,12 +77,22 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::disconnectFromServer()
+> auto ::network::client::AClient<UserMessageType>::connectToServer(
+    const ::std::string& host,
+    const ::std::uint16_t port
+) -> bool
+{
+    // TODO: Client block until connected
+    return this->startConnectingToServer(host, port);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::client::AClient<UserMessageType>::disconnectFromServer()
 {
     if (m_tcpConnectionToServer) {
         if (this->isConnectedToServer()) {
             m_tcpConnectionToServer->disconnect();
-            ::std::cout << "[Client:TCP:" << m_tcpConnectionToServer->getId() << "] Disconnected.\n";
         }
         m_tcpConnectionToServer.reset();
     }
@@ -90,7 +100,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::sendToServer(
+> void ::network::client::AClient<UserMessageType>::sendToServer(
     ::network::Message<UserMessageType>& message
 )
 {
@@ -99,7 +109,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::sendToServer(
+> void ::network::client::AClient<UserMessageType>::sendToServer(
     ::network::Message<UserMessageType>&& message
 )
 {
@@ -110,7 +120,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::isConnectedToServer() const
+> auto ::network::client::AClient<UserMessageType>::isConnectedToServer() const
     -> bool
 {
     return m_tcpConnectionToServer && m_tcpConnectionToServer->isConnected();
@@ -122,14 +132,14 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::openUdpConnection()
+> void ::network::client::AClient<UserMessageType>::openUdpConnection()
 {
-    m_connectionToPeer = ::std::make_shared<::network::UdpConnection<UserMessageType>>(*this);
+    m_connectionToPeer = ::std::make_shared<::network::udp::Connection<UserMessageType>>(*this);
 }
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::targetPeer(
+> auto ::network::client::AClient<UserMessageType>::targetPeer(
     const ::std::string& host,
     const ::std::uint16_t port
 ) -> bool
@@ -148,7 +158,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::closePeerConnection()
+> void ::network::client::AClient<UserMessageType>::closePeerConnection()
 {
     if (this->isConnectedToPeer()) {
         m_connectionToPeer->close();
@@ -159,7 +169,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::sendToPeer(
+> void ::network::client::AClient<UserMessageType>::sendToPeer(
     ::network::Message<UserMessageType>&& message
 )
 {
@@ -168,7 +178,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::isConnectedToPeer() const
+> auto ::network::client::AClient<UserMessageType>::isConnectedToPeer() const
     -> bool
 {
     return m_connectionToPeer && m_connectionToPeer->isOpen();
@@ -180,9 +190,9 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::defaultReceiveBehaviour(
+> auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
     ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
 {
     switch (message.getType()) {
@@ -194,8 +204,26 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
+    ::network::Message<UserMessageType>& message,
+    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+) -> bool
+{
+    switch (message.getType()) {
+    default:
+        return false;
+    }
+    return true;
+}
+
+
+
+// ------------------------------------------------------------------ user behaviours
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::client::AClient<UserMessageType>::onDisconnect(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
 {
     if (this->isConnectedToPeer()) {
@@ -206,23 +234,23 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AClient<UserMessageType>::onAuthentification(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> auto ::network::client::AClient<UserMessageType>::onAuthentification(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
 
 {
-    ::std::cout << "[AClient:TCP:" << connection->getId() << "] onAuthentification.\n";
+    ::std::cout << "[Client:TCP:" << connection->getId() << "] onAuthentification.\n";
     connection->setUserName("user"s + ::std::to_string(connection->getId()));
     return true;
 }
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::onConnectionValidated(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> void ::network::client::AClient<UserMessageType>::onConnectionValidated(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[AClient:TCP:" << connection->getId() << "] onConnectionValidated.\n";
+    ::std::cout << "[Client:TCP:" << connection->getId() << "] onConnectionValidated.\n";
     // start reading/writing tcp
     connection->startReadMessage();
     if (connection->hasSendingMessagesAwaiting()) {
@@ -234,8 +262,8 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AClient<UserMessageType>::onUdpDisconnect(
-    ::std::shared_ptr<::network::UdpConnection<UserMessageType>> connection
+> void ::network::client::AClient<UserMessageType>::onDisconnect(
+    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
 )
 {
     ::std::cout << "[Client:UDP] OnDisconnect.\n";

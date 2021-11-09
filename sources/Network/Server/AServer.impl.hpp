@@ -4,7 +4,7 @@
 
 template <
     ::detail::isEnum UserMessageType
-> ::network::AServer<UserMessageType>::AServer(
+> ::network::server::AServer<UserMessageType>::AServer(
     const ::std::uint16_t port
 )
     : ::network::ANode<UserMessageType>{ ::network::ANode<UserMessageType>::Type::server }
@@ -18,7 +18,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> ::network::AServer<UserMessageType>::~AServer()
+> ::network::server::AServer<UserMessageType>::~AServer()
 {
     this->stop();
 }
@@ -29,7 +29,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AServer<UserMessageType>::start()
+> auto ::network::server::AServer<UserMessageType>::start()
     -> bool
 {
     try {
@@ -45,7 +45,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::stop()
+> void ::network::server::AServer<UserMessageType>::stop()
 {
     if (this->isRunning()) {
         this->stopThread();
@@ -56,7 +56,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AServer<UserMessageType>::isRunning()
+> auto ::network::server::AServer<UserMessageType>::isRunning()
     -> bool
 {
     // TODO: isRunning implemetation
@@ -65,11 +65,11 @@ template <
 
 
 
-// ------------------------------------------------------------------ in - async
+// ------------------------------------------------------------------ in
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::startReceivingConnections()
+> void ::network::server::AServer<UserMessageType>::startReceivingConnections()
 {
     m_asioAcceptor.async_accept(
         [this](
@@ -78,7 +78,7 @@ template <
         ) {
             if (!errorCode) {
                 ::std::cout << "[Server] New incomming connection: " << socket.remote_endpoint() << ".\n";
-                auto newConnection{ ::std::make_shared<::network::TcpConnection<UserMessageType>>(
+                auto newConnection{ ::std::make_shared<::network::tcp::Connection<UserMessageType>>(
                     *this,
                     ::std::move(socket)
                 ) };
@@ -99,13 +99,13 @@ template <
 
 
 
-// ------------------------------------------------------------------ async - out
+// ------------------------------------------------------------------ out
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::send(
+> void ::network::server::AServer<UserMessageType>::send(
     ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> client
 )
 {
     client->send(message);
@@ -113,12 +113,72 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::send(
+> void ::network::server::AServer<UserMessageType>::send(
     ::network::Message<UserMessageType>&& message,
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> client
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> client
 )
 {
     client->send(::std::move(message));
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::server::AServer<UserMessageType>::send(
+    ::network::Message<UserMessageType>& message,
+    ::detail::Id clientId
+)
+{
+    this->getConnection(clientId)->send(message);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::server::AServer<UserMessageType>::send(
+    ::network::Message<UserMessageType>&& message,
+    ::detail::Id clientId
+)
+{
+    this->getConnection(clientId)->send(::std::move(message));
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::server::AServer<UserMessageType>::send(
+    const ::network::Message<UserMessageType>& message,
+    ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... clients
+)
+{
+    for (auto& client : {clients...}) {
+        client->send(message);
+    }
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::server::AServer<UserMessageType>::sendToAllClients(
+    const ::network::Message<UserMessageType>& message,
+    ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... ignoredClients
+)
+{
+    for (auto& client : m_connections) {
+        if (((client != ignoredClients) && ...)) {
+            client->send(message);
+        }
+    }
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::server::AServer<UserMessageType>::sendToAllClients(
+    const ::network::Message<UserMessageType>& message,
+    ::detail::sameAs<::detail::Id> auto... ignoredClientIds
+)
+{
+    for (auto& client : m_connections) {
+        if (((client.getId() != ignoredClientIds) && ...)) {
+            client->send(message);
+        }
+    }
 }
 
 
@@ -127,9 +187,26 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AServer<UserMessageType>::defaultReceiveBehaviour(
+> auto ::network::server::AServer<UserMessageType>::defaultReceiveBehaviour(
     ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+) -> bool
+{
+    switch (message.getTypeAsSystemType()) {
+    case ::network::Message<UserMessageType>::SystemType::ping:
+        connection->send(message);
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::server::AServer<UserMessageType>::defaultReceiveBehaviour(
+    ::network::Message<UserMessageType>& message,
+    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
 ) -> bool
 {
     switch (message.getTypeAsSystemType()) {
@@ -148,8 +225,8 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> disconnectedConnection
+> void ::network::server::AServer<UserMessageType>::onDisconnect(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> disconnectedConnection
 )
 {
     ::std::cout << '[' << disconnectedConnection->getId() << "] Disconnected.\n";
@@ -158,7 +235,7 @@ template <
         [
             disconnectedConnection
         ](
-            const ::std::shared_ptr<::network::TcpConnection<UserMessageType>>& connection
+            const ::std::shared_ptr<::network::tcp::Connection<UserMessageType>>& connection
         ){
             return connection == disconnectedConnection;
         }
@@ -167,22 +244,22 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AServer<UserMessageType>::onAuthentification(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> auto ::network::server::AServer<UserMessageType>::onAuthentification(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 ) -> bool
 {
     // TODO: onAuthentification give reson why it failed
     // TODO: onIdentification and onAuthentification max number fail attempts
-    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onAuthentification: \""
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onAuthentification: \""
         << connection->getUserName() << "\".\n";
     if (connection->getUserName().size() < 3) {
-        ::std::cerr << "[ERROR:AServer:TCP:" << connection->getId()
+        ::std::cerr << "[ERROR:Server:TCP:" << connection->getId()
             << ":onAuthentification] User name too short\n";
         return false;
     }
     for (const auto& validatedConnection : m_connections) {
         if (validatedConnection->getUserName() == connection->getUserName()) {
-            ::std::cerr << "[ERROR:AServer:TCP:" << connection->getId()
+            ::std::cerr << "[ERROR:Server:TCP:" << connection->getId()
                 << ":onAuthentification] User name already taken\n";
             return false;
         }
@@ -192,11 +269,11 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::onConnectionValidated(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> void ::network::server::AServer<UserMessageType>::onConnectionValidated(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onConnectionValidated.\n";
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onConnectionValidated.\n";
     // start reading/writing tcp
     connection->startReadMessage();
     m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
@@ -207,11 +284,11 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::AServer<UserMessageType>::onAuthentificationDenial(
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+> void ::network::server::AServer<UserMessageType>::onAuthentificationDenial(
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[AServer:TCP:" << connection->getId() << "] onAuthentificationDenial.\n";
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onAuthentificationDenial.\n";
 }
 
 
@@ -220,9 +297,9 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> [[ nodiscard ]] auto ::network::AServer<UserMessageType>::getConnection(
+> [[ nodiscard ]] auto ::network::server::AServer<UserMessageType>::getConnection(
     ::detail::Id id
-) -> ::std::shared_ptr<::network::TcpConnection<UserMessageType>>
+) -> ::std::shared_ptr<::network::tcp::Connection<UserMessageType>>
 {
     return *::std::ranges::find_if(
         m_connections,
@@ -232,7 +309,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::AServer<UserMessageType>::getConnectionsSharableInformations() const
+> auto ::network::server::AServer<UserMessageType>::getConnectionsSharableInformations() const
     -> ::std::vector<::std::pair<::std::string, ::detail::Id>>
 {
     ::std::vector<::std::pair<::std::string, ::detail::Id>> sharableInformations{ m_connections.size() };

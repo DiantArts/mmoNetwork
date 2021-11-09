@@ -1,11 +1,11 @@
 #pragma once
 
 #include <Network/ANode.hpp>
-#include <Network/UdpConnection.hpp>
+#include <Network/Udp/Connection.hpp>
 
 
 
-namespace network {
+namespace network::client {
 
 
 
@@ -38,6 +38,11 @@ public:
 
 
     // ------------------------------------------------------------------ server
+
+    [[ nodiscard ]] auto startConnectingToServer(
+        const ::std::string& host,
+        ::std::uint16_t port
+    ) -> bool;
 
     [[ nodiscard ]] auto connectToServer(
         const ::std::string& host,
@@ -105,49 +110,62 @@ public:
 
 
 
-    // ------------------------------------------------------------------ user behaviours
+    // ------------------------------------------------------------------ default behaviours
 
     virtual auto defaultReceiveBehaviour(
         ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     ) -> bool
         override final;
 
+    virtual auto defaultReceiveBehaviour(
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+    ) -> bool
+        override final;
+
+
+
+    // ------------------------------------------------------------------ user behaviours
+
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     ) override;
 
     // refuses the identification by returning false, used to set username for exemple
     [[ nodiscard ]] virtual auto onAuthentification(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     ) -> bool
         override;
 
     virtual void onConnectionValidated(
-        ::std::shared_ptr<::network::TcpConnection<UserMessageType>> connection
+        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
     ) override;
 
 
 
-    // handle the disconnection
-    virtual void onUdpDisconnect(
-        ::std::shared_ptr<::network::UdpConnection<UserMessageType>> connection
-    );
+    virtual void onDisconnect(
+        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+    ) override;
+
+
+
 
 
 
 protected:
 
     // hardware connection to the server
-    ::std::shared_ptr<::network::TcpConnection<UserMessageType>> m_tcpConnectionToServer;
+    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> m_tcpConnectionToServer;
+
     // TODO: implemente udp connection to server
-    ::std::shared_ptr<::network::UdpConnection<UserMessageType>> m_udpConnectionToServer;
-    ::std::shared_ptr<::network::UdpConnection<UserMessageType>> m_connectionToPeer;
+    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> m_udpConnectionToServer;
+    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> m_connectionToPeer;
 
 };
 
 
 
-} // namespace network
+} // namespace network::client
 
 #include <Network/Client/AClient.impl.hpp>
