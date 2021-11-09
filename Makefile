@@ -46,9 +46,9 @@ CPPM_WFLAGS		:=
 ## flags
 COMMON_FLAGS	:=	-fmax-errors=10
 C_FLAGS			:=	
-CPP_FLAGS		:=	-std=c++20
-CPPM_FLAGS		:=	-std=c++20
-PCH_FLAGS		:=	-std=c++20
+CPP_FLAGS		:=	-std=c++17
+CPPM_FLAGS		:=	-std=c++17
+PCH_FLAGS		:=	-std=c++17
 
 ## -I
 COMMON_CPPFLAGS	:=	$(INCDIR) $(SRCDIR) $(EXTERNDIR) $(EXTERNDIR)/HdrOnly $(LIBDIR)
