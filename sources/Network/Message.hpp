@@ -73,50 +73,92 @@ public:
 
 
 
-    // ------------------------------------------------------------------ insert
+    // ------------------------------------------------------------------ push
     // Insert any POD-like data into the body
 
-    void insert(
+    void push(
         const ::detail::isSendableData auto& data
     );
 
-    void insert(
+    void push(
         ::detail::isSendableData auto&& data
     );
 
-    void insert(
-        const ::std::span<auto>& data
+    template <
+        ::detail::isSendableData Type
+    > void push(
+        ::std::span<Type> data
     );
 
-    void insert(
-        const ::std::pair<auto, auto>& data
+    template <
+        ::detail::isSendableData Type,
+        ::std::size_t size
+    > void push(
+        ::std::span<Type, size> data
     );
 
-    void insert(
+    void push(
+        ::std::span<auto> data
+    );
+
+    template <
+        ::std::size_t size
+    > void push(
+        ::std::span<auto, size> data
+    );
+
+    void push(
         const ::std::vector<auto>& data
     );
 
-    void insert(
+    void push(
+        ::std::vector<auto>&& data
+    );
+
+    template <
+        typename Type,
+        ::std::size_t size
+    > void push(
+        const ::std::array<Type, size>& data
+    );
+
+    template <
+        typename Type,
+        ::std::size_t size
+    > void push(
+        ::std::array<Type, size>&& data
+    );
+
+    void push(
+        const ::std::pair<auto, auto>& data
+    );
+
+    void push(
+        ::std::pair<auto, auto>&& data
+    );
+
+    void push(
         const ::std::string& data
     );
 
-    void insert(
-        ::std::string_view data
+    void push(
+        ::std::string&& data
     );
 
-    void insert(
+    void push(
         const char* ptrToData
     );
 
 
 
-    void insertRawMemory(
+    void pushRawMemory(
         auto* ptrToData,
         const ::std::size_t size
     );
 
 
-    void insertAll(
+
+    void pushAll(
         auto&&... args
     );
 
@@ -132,37 +174,67 @@ public:
 
 
 
-    // ------------------------------------------------------------------ extract
+    // ------------------------------------------------------------------ pull
     // Extract any POD-like data from the end of the body
 
-    void extractRawMemory(
+    void pullRawMemory(
         ::std::vector<::std::byte>& refToData,
         const ::std::size_t size
     );
 
-    auto extractRawMemory(
+    auto pullRawMemory(
         const ::std::size_t size
     ) -> ::std::vector<::std::byte>;
 
-    void extract(
+    void pull(
         ::detail::isSendableData auto& data
     );
 
-    void extract(
-        ::std::pair<auto, auto>& data
+    template <
+        ::detail::isSendableData Type
+    > void pull(
+        ::std::span<Type> data
     );
 
-    void extract(
+    template <
+        ::detail::isSendableData Type,
+        ::std::size_t size
+    > void pull(
+        ::std::span<Type, size> data
+    );
+
+    void pull(
+        ::std::span<auto> data
+    );
+
+    template <
+        ::std::size_t size
+    > void pull(
+        ::std::span<auto, size> data
+    );
+
+    void pull(
         ::std::vector<auto>& data
     );
 
-    void extract(
+    template <
+        typename Type,
+        ::std::size_t size
+    > void pull(
+        ::std::array<Type, size>& data
+    );
+
+    void pull(
+        ::std::pair<auto, auto>& data
+    );
+
+    void pull(
         ::std::string& data
     );
 
     template <
         typename DataType
-    > auto extract()
+    > auto pull()
         -> DataType;
 
     auto operator>>(

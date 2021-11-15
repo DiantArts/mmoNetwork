@@ -77,7 +77,7 @@ private:
             this->sendToAllClients(
                 ::network::Message{
                     ::MessageType::message,
-                    message.extract<::std::string>(),
+                    message.pull<::std::string>(),
                     connection->getUserName()
                 },
                 connection

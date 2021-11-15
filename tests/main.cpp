@@ -1,2 +1,2 @@
-#define BOOST_TEST_MODULE "ECS Engine"
+#define BOOST_TEST_MODULE "Network"
 #include <boost/test/included/unit_test.hpp>

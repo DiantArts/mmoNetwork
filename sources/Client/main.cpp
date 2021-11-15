@@ -6,7 +6,6 @@ enum class Enum{ nothing };
 
 int main(int argc, char **argv)
 {
-    ::network::Message<Enum> msg;
     ::ClientExample client;
     ::std::thread thread;
 

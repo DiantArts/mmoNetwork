@@ -5,8 +5,6 @@
 
 
 
-// TODO: fix call
-
 class ClientExample
     : public ::network::AClient<::MessageType>
 {
@@ -16,14 +14,14 @@ public:
     // ------------------------------------------------------------------ Other
 
     void messageServer(
-        ::std::string_view message
+        const ::std::string& message
     )
     {
         this->sendToServer(::MessageType::messageAll, message);
     }
 
     void messagePeer(
-        ::std::string_view message
+        const ::std::string& message
     )
     {
         this->sendToPeer(::MessageType::message, message, m_tcpConnectionToServer->getUserName());
@@ -100,8 +98,8 @@ public:
             break;
         } case ::MessageType::message: {
             ::std::cout << "message from [Tcp:"
-                << "" << message.extract<::std::string>() << "] "
-                << message.extract<::std::string>() << ::std::endl;
+                << "" << message.pull<::std::string>() << "] "
+                << message.pull<::std::string>() << ::std::endl;
             break;
         } default: break;
         }
@@ -114,8 +112,8 @@ public:
     {
         switch (message.getType()) {
         case ::MessageType::message:
-            ::std::cout << "message from [Udp:" << "" << message.extract<::std::string>() << "] "
-                << message.extract<::std::string>() << ::std::endl;
+            ::std::cout << "message from [Udp:" << "" << message.pull<::std::string>() << "] "
+                << message.pull<::std::string>() << ::std::endl;
             break;
         default: break;
         }

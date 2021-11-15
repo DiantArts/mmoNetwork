@@ -34,7 +34,7 @@ public:
         ::detail::Id id
     );
 
-    auto extract(
+    auto pull(
         ::detail::Id id
     ) -> ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection;
 

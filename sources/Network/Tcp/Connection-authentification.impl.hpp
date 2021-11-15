@@ -23,8 +23,8 @@ template <
                 << "unexpected message received.\n";
             return self.disconnect();
         }
-        auto password{ self.m_bufferIn.template extract<::std::string>() };
-        self.setUserName(self.m_bufferIn.template extract<::std::string>());
+        auto password{ self.m_bufferIn.template pull<::std::string>() };
+        self.setUserName(self.m_bufferIn.template pull<::std::string>());
         if (!self.m_owner.onAuthentification(self.shared_from_this())) {
             ::std::cerr << "[ERROR:TCP:" << self.m_id << "] Authentification failed, "
                 << "onAuthentification returned false.\n";

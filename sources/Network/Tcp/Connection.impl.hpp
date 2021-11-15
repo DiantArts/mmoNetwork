@@ -105,7 +105,7 @@ template <
         m_socket.close();
         auto id{ m_id };
         m_owner.onDisconnect(this->shared_from_this());
-        ::std::cout << "[Connection:TCP:" << m_id << "] Disconnected.\n";
+        ::std::cout << "[Connection:TCP:" << id << "] Disconnected.\n";
     }
 }
 

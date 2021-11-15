@@ -68,6 +68,7 @@ template <
     ::std::vector<::std::byte>&& encryptedBaseValue
 )
 {
+    // this->sendMessage<[](...){}>(::std::move(encryptedBaseValue));
     this->sendRawData<[](...){}>(encryptedBaseValue.data(), encryptedBaseValue.size());
 }
 
@@ -246,7 +247,7 @@ template <
             self.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::identificationAccepted
         ) {
-            self.m_bufferIn.extract(self.m_id);
+            self.m_bufferIn.pull(self.m_id);
 #ifdef ENABLE_ENCRYPTION
             ::std::cerr << "[Connection:TCP:" << self.m_id << "] Identification successful.\n";
 #endif // ENABLE_ENCRYPTION
