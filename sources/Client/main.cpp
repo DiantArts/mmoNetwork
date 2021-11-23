@@ -7,14 +7,14 @@ enum class Enum{ nothing };
 int main(int argc, char **argv)
 {
     ::ClientExample client;
-    ::std::thread thread;
+    ::std::thread inMessagesThread;
 
     try {
         if (!client.startConnectingToServer(argv[1], ::std::atoi(argv[2]))) {
             return EXIT_FAILURE;
         }
 
-        thread = ::std::thread{
+        inMessagesThread = ::std::thread{
             [&client](){
                 ::std::size_t i{ 0 };
                 while (client.isConnectedToServer()) {
@@ -40,21 +40,21 @@ int main(int argc, char **argv)
         }
 
         client.getIncommingMessages().notify();
-        thread.join();
+        inMessagesThread.join();
         return EXIT_SUCCESS;
 
     } catch (const ::std::exception& e) {
        ::std::cerr << "ERROR: " << e.what() <<::std::endl;
         client.disconnect();
         client.getIncommingMessages().notify();
-        thread.join();
+        inMessagesThread.join();
         return EXIT_FAILURE;
 
     } catch (...) {
        ::std::cerr << "ERROR: unknown" <<::std::endl;
         client.disconnect();
         client.getIncommingMessages().notify();
-        thread.join();
+        inMessagesThread.join();
         return EXIT_FAILURE;
 
     }

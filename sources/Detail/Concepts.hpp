@@ -25,6 +25,10 @@ template <
 
 template <
     typename Type
+> concept isNotSendableData = !isSendableData<Type>;
+
+template <
+    typename Type
 > concept isPointer = ::std::is_pointer<Type>::value;
 
 

@@ -169,6 +169,5 @@ template <
     typename Type
 > void ::detail::Queue<Type>::notify() const
 {
-    ::std::scoped_lock lock{ m_mutexBlocker };
     m_blocker.notify_one();
 }

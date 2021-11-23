@@ -62,7 +62,7 @@ template <
             *this,
             ::asio::ip::tcp::socket(this->getAsioContext())
         );
-        m_tcpConnectionToServer->connect(host, port);
+        m_tcpConnectionToServer->startConnectingToServer(host, port);
         ::std::cout << "[Client:TCP:" << m_tcpConnectionToServer->getId()
             << "] Connection request sent to " << host << ":" << port << ".\n";
         if (!this->getThreadContext().joinable()) {
@@ -83,7 +83,11 @@ template <
 ) -> bool
 {
     // TODO: Client block until connected
-    return this->startConnectingToServer(host, port);
+    if (!this->startConnectingToServer(host, port)) {
+        return false;
+    }
+    m_tcpConnectionToServer->waitNotification();
+    return this->isConnectedToServer();
 }
 
 template <
@@ -254,7 +258,7 @@ template <
     // start reading/writing tcp
     connection->startReadMessage();
     if (connection->hasSendingMessagesAwaiting()) {
-        connection->writeAwaitingMessages();
+        connection->sendAwaitingMessages();
     }
 }
 

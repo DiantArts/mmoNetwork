@@ -13,7 +13,6 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverReceiveAuthentification()
 {
-    ::std::this_thread::sleep_for(500ms);
     this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
         if (
             self.m_bufferIn.getTypeAsSystemType() !=
@@ -43,8 +42,9 @@ template <
 {
     this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
         ::std::cerr << "[Connection:TCP:" << self.m_id << "] Authentification successful.\n";
-        self.m_isValid = true;
+        self.m_isSendAllowed = true;
         self.m_owner.onConnectionValidated(self.shared_from_this());
+        self.m_blocker.notify_all();
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::authentificationAccepted
     });
@@ -67,7 +67,6 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientSendAuthentification()
 {
-    ::std::this_thread::sleep_for(500ms);
     this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
         self.clientReceiveAuthentificationAcceptance();
     }>(::network::Message<UserMessageType>{
@@ -87,12 +86,13 @@ template <
             self.m_owner.onAuthentificationDenial(self.shared_from_this());
             self.clientSendAuthentification();
         } else if (
-                self.m_bufferIn.getTypeAsSystemType() ==
-                ::network::Message<UserMessageType>::SystemType::authentificationAccepted
-            ) {
+            self.m_bufferIn.getTypeAsSystemType() ==
+            ::network::Message<UserMessageType>::SystemType::authentificationAccepted
+        ) {
             ::std::cerr << "[Connection:TCP:" << self.m_id << "] Authentification successful.\n";
-            self.m_isValid = true;
+            self.m_isSendAllowed = true;
             self.m_owner.onConnectionValidated(self.shared_from_this());
+            self.m_blocker.notify_all();
         } else {
             ::std::cerr << "[Connection:TCP:" << self.m_id << "] invalid authentification acceptance\n";
             self.disconnect();

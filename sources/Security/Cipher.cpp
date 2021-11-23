@@ -28,97 +28,112 @@
 
 // ------------------------------------------------------------------ keyManagment
 
-auto ::security::Cipher::getPublicKeyAddr()
-    -> void*
+auto ::security::Cipher::getPublicKey() const
+    -> const Cipher::PublicKey&
 {
-    return m_publicKey.data();
+    return m_publicKey;
 }
 
-auto ::security::Cipher::getTargetPublicKeyAddr()
-    -> void*
+auto ::security::Cipher::getTargetPublicKey() const
+    -> const Cipher::PublicKey&
 {
-    return m_targetPublicKey.data();
+    return m_targetPublicKey;
 }
 
-auto ::security::Cipher::getPublicKeySize() const
-    -> ::std::size_t
+void ::security::Cipher::setTargetPublicKey(
+    Cipher::PublicKey targetPublicKey
+)
 {
-    return m_publicKey.size();
+    m_targetPublicKey = ::std::move(targetPublicKey);
 }
 
 
 
-// ------------------------------------------------------------------ Handshake
+// ------------------------------------------------------------------ Data modification
 
-auto ::security::Cipher::scramble(
-    ::std::uint64_t data
-) -> ::std::uint64_t
+void ::security::Cipher::generateRandomData(
+    ::std::vector<::std::byte>& data
+)
 {
-    // choose prime numbers
-    ::std::uint16_t p, q;
-    switch (data % 4) {
-    case 0: p = 2069; q = 349; break;
-    case 1: p = 337; q = 839; break;
-    case 2: p = 73; q = 911; break;
-    default: p = 419; q = 181; break;
+    if (data.size() > 0) {
+        ::randombytes_buf(data.data(), data.size());
     }
+}
 
-    switch (data % 5) {
-    case 0: data ^= 0xDBF45A4B5C378C; break;
-    case 1: data ^= 0xE561AF40B4C687; break;
-    case 2: data ^= 0xFEBC43AA150FFF; break;
-    case 3: data ^= 0xA74BBC654E13BC; break;
-    case 4: data ^= 0x8A4B6B124F37BB; break;
-    }
-    data ^= (0xE5A1BC46F38049 & (p * q));
-
+auto ::security::Cipher::generateRandomData(
+    ::std::size_t size
+) -> ::std::vector<::std::byte>
+{
+    ::std::vector<::std::byte> data{ size };
+    ::security::Cipher::generateRandomData(data);
     return data;
 }
 
-
-
-
-// ------------------------------------------------------------------ Encrypt
-
-auto ::security::Cipher::encrypt(
-    const void* rawMemory,
-    size_t size
-) const
-    -> ::std::vector<::std::byte>
+// TODO: SHA256
+void ::security::Cipher::scramble(
+    ::std::vector<::std::byte>& data
+)
 {
-    ::std::vector<::std::byte> encrypted{ crypto_box_SEALBYTES + size };
-    ::crypto_box_seal(
-        reinterpret_cast<unsigned char*>(encrypted.data()),
-        reinterpret_cast<const unsigned char*>(rawMemory),
-        size,
-        reinterpret_cast<const unsigned char*>(m_targetPublicKey.data())
-    );
-    return encrypted;
+    // choose prime numbers
+    // for (auto& dataElem : data) {
+        // auto elem{ static_cast<::std::uint8_t>(dataElem) };
+        // ::std::uint16_t p, q;
+        // switch (elem % 4) {
+        // case 0: p = static_cast<::std::uint16_t>(2069); q = static_cast<::std::uint16_t>(349); break;
+        // case 1: p = static_cast<::std::uint16_t>(337); q = static_cast<::std::uint16_t>(839); break;
+        // case 2: p = static_cast<::std::uint16_t>(73); q = static_cast<::std::uint16_t>(911); break;
+        // case 3: p = static_cast<::std::uint16_t>(419); q = static_cast<::std::uint16_t>(181); break;
+        // }
+
+        // switch (elem % 5) {
+        // case 0: elem ^= 0xDB; break;
+        // case 1: elem ^= 0xE5; break;
+        // case 2: elem ^= 0xFE; break;
+        // case 3: elem ^= 0xA7; break;
+        // case 4: elem ^= 0x8A; break;
+        // case 5: elem ^= 0xFE; break;
+        // case 6: elem ^= 0x5E; break;
+        // case 7: elem ^= 0x15; break;
+        // case 8: elem ^= 0xA9; break;
+        // case 9: elem ^= 0x9B; break;
+        // }
+        // elem = (elem ^ (0x61 & (p * q))) % 0xFF;
+    // }
 }
 
-
-
-// ------------------------------------------------------------------ Decrypt
-
-auto ::security::Cipher::decrypt(
-    const void* rawMemory,
-    size_t size
+void ::security::Cipher::encrypt(
+    ::std::vector<::std::byte>& data
 ) const
-    -> ::std::vector<::std::byte>
 {
-    ::std::vector<::std::byte> decrypted{ size - crypto_box_SEALBYTES };
+    ::std::cout << __FUNCTION__ << ::std::endl;
+    ::std::vector<::std::byte> dataCpy{ data };
+    data.resize(crypto_box_SEALBYTES + dataCpy.size());
+    ::crypto_box_seal(
+        reinterpret_cast<unsigned char*>(data.data()),
+        reinterpret_cast<const unsigned char*>(dataCpy.data()),
+        dataCpy.size(),
+        reinterpret_cast<const unsigned char*>(m_targetPublicKey.data())
+    );
+}
+
+void ::security::Cipher::decrypt(
+    ::std::vector<::std::byte>& data
+) const
+{
+    ::std::cout << __FUNCTION__ << ::std::endl;
+    ::std::vector<::std::byte> decrypted{ data.size() - crypto_box_SEALBYTES };
     if (
         ::crypto_box_seal_open(
             reinterpret_cast<unsigned char*>(decrypted.data()),
-            reinterpret_cast<const unsigned char*>(rawMemory),
-            size,
+            reinterpret_cast<const unsigned char*>(data.data()),
+            data.size(),
             reinterpret_cast<const unsigned char*>(m_publicKey.data()),
             reinterpret_cast<const unsigned char*>(m_privateKey.data())
         )
     ) {
-        ::std::runtime_error("Decryption failed, invalid data.");
+        throw ::std::runtime_error("Decryption failed, invalid data.");
     }
-    return decrypted;
+    data = ::std::move(decrypted);
 }
 
 

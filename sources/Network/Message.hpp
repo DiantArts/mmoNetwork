@@ -25,6 +25,9 @@ public:
     enum class SystemType : ::std::uint16_t {
         // error = static_cast<::std::uint16_t>(UserMessageType::last) + 1, // TODO: fix that
         error = 10000,
+        publicKey,
+        proposeHandshake,
+        resolveHandshake,
         identificationAccepted,
         identificationDenied,
         authentification,
@@ -84,8 +87,16 @@ public:
         ::detail::isSendableData auto&& data
     );
 
+
+
     template <
         ::detail::isSendableData Type
+    > void push(
+        ::std::span<Type> data
+    );
+
+    template <
+        ::detail::isNotSendableData Type
     > void push(
         ::std::span<Type> data
     );
@@ -97,15 +108,14 @@ public:
         ::std::span<Type, size> data
     );
 
-    void push(
-        ::std::span<auto> data
-    );
-
     template <
+        ::detail::isNotSendableData Type,
         ::std::size_t size
     > void push(
-        ::std::span<auto, size> data
+        ::std::span<Type, size> data
     );
+
+
 
     void push(
         const ::std::vector<auto>& data
@@ -114,6 +124,8 @@ public:
     void push(
         ::std::vector<auto>&& data
     );
+
+
 
     template <
         typename Type,
@@ -129,6 +141,8 @@ public:
         ::std::array<Type, size>&& data
     );
 
+
+
     void push(
         const ::std::pair<auto, auto>& data
     );
@@ -136,6 +150,8 @@ public:
     void push(
         ::std::pair<auto, auto>&& data
     );
+
+
 
     void push(
         const ::std::string& data
@@ -162,8 +178,6 @@ public:
         auto&&... args
     );
 
-
-
     auto operator<<(
         const auto& data
     ) -> Message<UserMessageType>&;
@@ -177,21 +191,20 @@ public:
     // ------------------------------------------------------------------ pull
     // Extract any POD-like data from the end of the body
 
-    void pullRawMemory(
-        ::std::vector<::std::byte>& refToData,
-        const ::std::size_t size
-    );
-
-    auto pullRawMemory(
-        const ::std::size_t size
-    ) -> ::std::vector<::std::byte>;
-
     void pull(
         ::detail::isSendableData auto& data
     );
 
+
+
     template <
         ::detail::isSendableData Type
+    > void pull(
+        ::std::span<Type> data
+    );
+
+    template <
+        ::detail::isNotSendableData Type
     > void pull(
         ::std::span<Type> data
     );
@@ -203,15 +216,14 @@ public:
         ::std::span<Type, size> data
     );
 
-    void pull(
-        ::std::span<auto> data
-    );
-
     template <
+        ::detail::isNotSendableData Type,
         ::std::size_t size
     > void pull(
-        ::std::span<auto, size> data
+        ::std::span<Type, size> data
     );
+
+
 
     void pull(
         ::std::vector<auto>& data
@@ -231,6 +243,19 @@ public:
     void pull(
         ::std::string& data
     );
+
+
+
+    void pullRawMemory(
+        ::std::vector<::std::byte>& refToData,
+        const ::std::size_t size
+    );
+
+    auto pullRawMemory(
+        const ::std::size_t size
+    ) -> ::std::vector<::std::byte>;
+
+
 
     template <
         typename DataType
@@ -268,6 +293,9 @@ public:
 
     auto getTypeAsSystemType() const
         -> Message<UserMessageType>::SystemType;
+
+    auto getTypeAsInt() const
+        -> ::std::uint16_t;
 
     void setType(
         UserMessageType type

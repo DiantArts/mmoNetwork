@@ -35,7 +35,7 @@ public:
         ::detail::Id id
     ) -> bool;
 
-    void connect(
+    void startConnectingToServer(
         const ::std::string& host,
         ::std::uint16_t port
     );
@@ -44,6 +44,10 @@ public:
 
     [[ nodiscard ]] auto isConnected() const
         -> bool;
+
+    void notify();
+
+    void waitNotification();
 
 
 
@@ -60,7 +64,7 @@ public:
 
     bool hasSendingMessagesAwaiting() const;
 
-    void writeAwaitingMessages();
+    void sendAwaitingMessages();
 
 
 
@@ -110,21 +114,15 @@ private:
     template <
         auto successCallback
     > void sendMessage(
-        ::network::Message<UserMessageType> message
-    );
-
-    template <
-        typename Type,
-        auto successCallback
-    > void sendRawData(
+        ::network::Message<UserMessageType> message,
         auto&&... args
     );
 
     template <
         auto successCallback
-    > void sendRawData(
-        ::detail::isPointer auto pointerToData,
-        ::std::size_t dataSize
+    > void syncSendMessage(
+        ::network::Message<UserMessageType> message,
+        auto&&... args
     );
 
 
@@ -133,18 +131,14 @@ private:
 
     template <
         auto successCallback
-    > void receiveMessage();
-
-    template <
-        typename Type,
-        auto successCallback
-    > void receiveRawData();
+    > void receiveMessage(
+        auto&&... args
+    );
 
     template <
         auto successCallback
-    > void receiveToRawData(
-        ::detail::isPointer auto pointerToData,
-        ::std::size_t dataSize
+    > void syncReceiveMessage(
+        auto&&... args
     );
 
     void readBody();
@@ -175,32 +169,20 @@ private:
     void serverHandshake();
 
     void serverSendHandshake(
-        ::std::vector<::std::byte>&& encryptedHandshakeBaseValue
+        ::std::vector<::std::byte>&& encryptedBaseValue
     );
 
     void serverReadHandshake(
-        ::std::uint64_t& handshakeBaseValue,
-        ::std::array<
-            ::std::byte,
-            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
-        >* handshakeReceivedPtr
+        ::std::vector<::std::byte>&& baseValue
     );
 
 
     void clientHandshake();
 
-    void clientReadHandshake(
-        ::std::array<
-            ::std::byte,
-            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
-        >* handshakeReceivedPtr
-    );
+    void clientReadHandshake();
 
     void clientResolveHandshake(
-        ::std::array<
-            ::std::byte,
-            ::security::Cipher::getEncryptedSize(sizeof(::std::uint64_t))
-        >* handshakeReceivedPtr
+        ::std::vector<::std::byte>&& receivedValue
     );
 
 #endif // ENABLE_ENCRYPTION
@@ -249,7 +231,7 @@ private:
     ::detail::Id m_id{ 1 };
     ::std::string m_userName;
 
-    bool m_isValid{ false };
+    bool m_isSendAllowed{ false };
 
     using ::network::AConnection<UserMessageType>::m_owner;
     using ::network::AConnection<UserMessageType>::m_bufferIn;
@@ -257,6 +239,9 @@ private:
 #ifdef ENABLE_ENCRYPTION
     using ::network::AConnection<UserMessageType>::m_cipher;
 #endif // ENABLE_ENCRYPTION
+
+    ::std::mutex m_mutex;
+    ::std::condition_variable m_blocker;
 
 };
 

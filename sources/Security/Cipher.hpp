@@ -16,6 +16,12 @@ class Cipher {
 
 public:
 
+    using PublicKey = ::std::array<::std::byte, crypto_box_PUBLICKEYBYTES>;
+
+
+
+public:
+
     // ------------------------------------------------------------------ *structors
 
     explicit Cipher();
@@ -26,50 +32,39 @@ public:
 
     // ------------------------------------------------------------------ keyManagment
 
-    [[ nodiscard ]] auto getPublicKeyAddr()
-        -> void*;
+    [[ nodiscard ]] auto getPublicKey() const
+        -> const Cipher::PublicKey&;
 
-    [[ nodiscard ]] auto getTargetPublicKeyAddr()
-        -> void*;
+    [[ nodiscard ]] auto getTargetPublicKey() const
+        -> const Cipher::PublicKey&;
 
-    [[ nodiscard ]] auto getPublicKeySize() const
-        -> ::std::size_t;
-
-
-
-    // ------------------------------------------------------------------ Handshake
-
-    [[ nodiscard ]] static auto scramble(
-        ::std::uint64_t data
-    ) -> ::std::uint64_t;
+    void setTargetPublicKey(
+        Cipher::PublicKey targetPublicKey
+    );
 
 
 
+    // ------------------------------------------------------------------ Data modification
 
-    // ------------------------------------------------------------------ Encrypt
+    static void generateRandomData(
+        ::std::vector<::std::byte>&
+    );
 
-    [[ nodiscard ]] auto encrypt(
-        const void* rawMemory,
+    static auto generateRandomData(
         ::std::size_t size
-    ) const
-        -> ::std::vector<::std::byte>;
+    ) -> ::std::vector<::std::byte>;
 
-    [[ nodiscard ]] static inline constexpr auto getEncryptedSize(
-        ::std::size_t size
-    ) -> ::std::size_t
-    {
-        return crypto_box_SEALBYTES + size;
-    }
+    static void scramble(
+        ::std::vector<::std::byte>&
+    );
 
+    void encrypt(
+        ::std::vector<::std::byte>&
+    ) const;
 
-
-    // ------------------------------------------------------------------ Decrypt
-
-    [[ nodiscard ]] auto decrypt(
-        const void* rawMemory,
-        ::std::size_t size
-    ) const
-        -> ::std::vector<::std::byte>;
+    void decrypt(
+        ::std::vector<::std::byte>&
+    ) const;
 
 
 

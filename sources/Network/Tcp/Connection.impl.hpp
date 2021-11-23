@@ -26,6 +26,7 @@ template <
         m_socket.close();
         ::std::cout << "[Connection:TCP:" << m_id << "] Disconnected.\n";
     }
+    m_blocker.notify_all();
 }
 
 
@@ -36,8 +37,7 @@ template <
     ::detail::isEnum UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::connectToClient(
     ::detail::Id id
-)
-    -> bool
+) -> bool
 {
     if (m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
         if (m_socket.is_open()) {
@@ -62,7 +62,7 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::tcp::Connection<UserMessageType>::connect(
+> void ::network::tcp::Connection<UserMessageType>::startConnectingToServer(
     const ::std::string& host,
     const ::std::uint16_t port
 )
@@ -103,6 +103,7 @@ template <
     if (this->isConnected()) {
         m_socket.cancel();
         m_socket.close();
+        this->notify();
         auto id{ m_id };
         m_owner.onDisconnect(this->shared_from_this());
         ::std::cout << "[Connection:TCP:" << id << "] Disconnected.\n";
@@ -115,6 +116,21 @@ template <
     -> bool
 {
     return m_socket.is_open();
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::tcp::Connection<UserMessageType>::notify()
+{
+    m_blocker.notify_all();
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::tcp::Connection<UserMessageType>::waitNotification()
+{
+    ::std::unique_lock locker{ m_mutex };
+    m_blocker.wait(locker);
 }
 
 
@@ -138,8 +154,8 @@ template <
         {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
-            if (m_isValid && needsToStartSending) {
-                this->writeAwaitingMessages();
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
             }
         }
     );
@@ -158,8 +174,8 @@ template <
         {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
-            if (m_isValid && needsToStartSending) {
-                this->writeAwaitingMessages();
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
             }
         },
         ::std::move(message)
@@ -175,13 +191,13 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::tcp::Connection<UserMessageType>::writeAwaitingMessages()
+> void ::network::tcp::Connection<UserMessageType>::sendAwaitingMessages()
 {
 
     this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
         self.m_messagesOut.remove_front();
         if (self.hasSendingMessagesAwaiting()) {
-            self.writeAwaitingMessages();
+            self.sendAwaitingMessages();
         }
     }>(m_messagesOut.front());
 }
@@ -271,17 +287,19 @@ template <
 > template <
     auto successCallback
 > void ::network::tcp::Connection<UserMessageType>::sendMessage(
-    ::network::Message<UserMessageType> message
+    ::network::Message<UserMessageType> message,
+    auto&&... args
 )
 {
     ::asio::async_write(
         m_socket,
         ::asio::buffer(message.getHeaderAddr(), message.getSendingHeaderSize()),
-        ::std::bind_front(
+        ::std::bind(
             [this, id = m_id](
-                ::network::Message<UserMessageType> message,
                 const ::std::error_code& errorCode,
-                const ::std::size_t length [[ maybe_unused ]]
+                const ::std::size_t length [[ maybe_unused ]],
+                ::network::Message<UserMessageType> message,
+                auto&&... args
             ) {
                 if (errorCode) {
                     if (errorCode == ::asio::error::operation_aborted) {
@@ -299,11 +317,12 @@ template <
                         ::asio::async_write(
                             m_socket,
                             ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
-                            ::std::bind_front(
+                            ::std::bind(
                                 [this, id = m_id](
-                                    ::network::Message<UserMessageType> message,
                                     const ::std::error_code& errorCode,
-                                    const ::std::size_t length [[ maybe_unused ]]
+                                    const ::std::size_t length [[ maybe_unused ]],
+                                    ::network::Message<UserMessageType> message,
+                                    auto&&... args
                                 ) {
                                     if (errorCode) {
                                         if (errorCode == ::asio::error::operation_aborted) {
@@ -319,89 +338,31 @@ template <
                                             this->disconnect();
                                         }
                                     } else {
-                                        successCallback(::std::ref(*this));
+                                        successCallback(
+                                            ::std::ref(*this),
+                                            ::std::forward<decltype(args)>(args)...
+                                        );
                                     }
                                 },
-                                ::std::move(message)
+                                ::std::placeholders::_1,
+                                ::std::placeholders::_2,
+                                ::std::move(message),
+                                ::std::forward<decltype(args)>(args)...
                             )
                         );
                     } else {
-                        successCallback(::std::ref(*this));
+                        successCallback(
+                            ::std::ref(*this),
+                            ::std::forward<decltype(args)>(args)...
+                        );
                     }
                 }
             },
-            ::std::move(message)
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::move(message),
+            ::std::forward<decltype(args)>(args)...
         )
-    );
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename Type,
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::sendRawData(
-    auto&&... args
-)
-{
-    auto pointerToData{ new Type{ ::std::forward<decltype(args)>(args)... } };
-    ::asio::async_write(
-        m_socket,
-        ::asio::buffer(pointerToData, sizeof(Type)),
-        [this, pointerToData, id = m_id](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                } else if (errorCode == ::asio::error::eof) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
-                    this->disconnect();
-                } else {
-                    ::std::cerr << "[ERROR:TCP:" << id << "] Write raw data failed: "
-                        << errorCode.message() << ".\n";
-                    this->disconnect();
-                }
-            } else {
-                successCallback(::std::ref(*this));
-            }
-            delete pointerToData;
-        }
-    );
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::sendRawData(
-    ::detail::isPointer auto pointerToData,
-    ::std::size_t dataSize
-)
-{
-    ::asio::async_write(
-        m_socket,
-        ::asio::buffer(pointerToData, dataSize),
-        [this, id = m_id](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                } else if (errorCode == ::asio::error::eof) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
-                    this->disconnect();
-                } else {
-                    ::std::cerr << "[ERROR:TCP:" << id << "] Write raw data failed: "
-                        << errorCode.message() << ".\n";
-                    this->disconnect();
-                }
-            } else {
-                successCallback(::std::ref(*this));
-            }
-        }
     );
 }
 
@@ -413,126 +374,79 @@ template <
     ::detail::isEnum UserMessageType
 > template <
     auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::receiveMessage()
-{
-    ::asio::async_read(
-        m_socket,
-        ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getSendingHeaderSize()),
-        [this, id = m_id](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                } else if (errorCode == ::asio::error::eof) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
-                    this->disconnect();
-                } else {
-                    ::std::cerr << "[ERROR:TCP:" << id << "] Read header failed: "
-                        << errorCode.message() << ".\n";
-                    this->disconnect();
-                }
-            } else {
-                if (!m_bufferIn.isBodyEmpty()) {
-                    m_bufferIn.updateBodySize();
-                    ::asio::async_read(
-                        m_socket,
-                        ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
-                        [this, id = m_id](
-                            const ::std::error_code& errorCode,
-                            const ::std::size_t length
-                        ) {
-                            if (errorCode) {
-                                if (errorCode == ::asio::error::operation_aborted) {
-                                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                                } else if (errorCode == ::asio::error::eof) {
-                                    ::std::cerr << "[Connection:TCP:" << id
-                                        << "] Node stopped the connection.\n";
-                                    this->disconnect();
-                                } else {
-                                    ::std::cerr << "[ERROR:TCP:" << id << "] Read body failed: "
-                                        << errorCode.message() << ".\n";
-                                    this->disconnect();
-                                }
-                            } else {
-                                successCallback(::std::ref(*this));
-                            }
-                        }
-                    );
-                } else {
-                    successCallback(::std::ref(*this));
-                }
-            }
-        }
-    );
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename Type,
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::receiveRawData()
-{
-    auto pointerToData{ new ::std::array<::std::byte, sizeof(Type)> };
-    ::asio::async_read(
-        m_socket,
-        ::asio::buffer(pointerToData->data(), sizeof(Type)),
-        [this, pointerToData, id = m_id](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                } else if (errorCode == ::asio::error::eof) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
-                    this->disconnect();
-                } else {
-                    ::std::cerr << "[ERROR:TCP:" << id << "] Receive raw data failed: "
-                        << errorCode.message() << ".\n";
-                    this->disconnect();
-                }
-            } else {
-                successCallback(::std::ref(*this), *static_cast<Type*>(pointerToData->data()));
-            }
-            delete pointerToData;
-        }
-    );
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    auto successCallback
-> void ::network::tcp::Connection<UserMessageType>::receiveToRawData(
-    ::detail::isPointer auto pointerToData,
-    ::std::size_t dataSize
+> void ::network::tcp::Connection<UserMessageType>::receiveMessage(
+    auto&&... args
 )
 {
     ::asio::async_read(
         m_socket,
-        ::asio::buffer(pointerToData, dataSize),
-        [this, pointerToData, id = m_id](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
-                } else if (errorCode == ::asio::error::eof) {
-                    ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
-                    this->disconnect();
+        ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getSendingHeaderSize()),
+        ::std::bind(
+            [this, id = m_id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length,
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
+                        this->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:TCP:" << id << "] Read header failed: "
+                            << errorCode.message() << ".\n";
+                        this->disconnect();
+                    }
                 } else {
-                    ::std::cerr << "[ERROR:TCP:" << id << "] Receive raw data failed: "
-                        << errorCode.message() << ".\n";
-                    this->disconnect();
+                    if (!m_bufferIn.isBodyEmpty()) {
+                        m_bufferIn.updateBodySize();
+                        ::asio::async_read(
+                            m_socket,
+                            ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
+                            ::std::bind(
+                                [this, id = m_id](
+                                    const ::std::error_code& errorCode,
+                                    const ::std::size_t length,
+                                    auto&&... args
+                                ) {
+                                    if (errorCode) {
+                                        if (errorCode == ::asio::error::operation_aborted) {
+                                            ::std::cerr << "[Connection:TCP:" << id
+                                                << "] Operation canceled.\n";
+                                        } else if (errorCode == ::asio::error::eof) {
+                                            ::std::cerr << "[Connection:TCP:" << id
+                                                << "] Node stopped the connection.\n";
+                                            this->disconnect();
+                                        } else {
+                                            ::std::cerr << "[ERROR:TCP:" << id << "] Read body failed: "
+                                                << errorCode.message() << ".\n";
+                                            this->disconnect();
+                                        }
+                                    } else {
+                                        successCallback(
+                                            ::std::ref(*this),
+                                            ::std::forward<decltype(args)>(args)...
+                                        );
+                                    }
+                                },
+                                ::std::placeholders::_1,
+                                ::std::placeholders::_2,
+                                ::std::forward<decltype(args)>(args)...
+                            )
+                        );
+                    } else {
+                        successCallback(
+                            ::std::ref(*this),
+                            ::std::forward<decltype(args)>(args)...
+                        );
+                    }
                 }
-            } else {
-                successCallback(::std::ref(*this));
-            }
-        }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::forward<decltype(args)>(args)...
+        )
     );
 }
 

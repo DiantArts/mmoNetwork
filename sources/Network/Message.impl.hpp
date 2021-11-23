@@ -41,7 +41,6 @@ template <
 
 
 // ------------------------------------------------------------------ push
-// Insert any POD-like data into the body
 
 template <
     ::detail::isEnum UserMessageType
@@ -71,6 +70,8 @@ template <
     ::std::memmove(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
 }
 
+
+
 template <
     ::detail::isEnum UserMessageType
 > template <
@@ -87,6 +88,22 @@ template <
 
         // push data into the end of the vector
         ::std::memmove(m_body.data() + m_header.bodySize - memSize, data.data(), memSize);
+    }
+    this->push<::std::uint16_t>(data.size());
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    ::detail::isNotSendableData Type
+> void ::network::Message<UserMessageType>::push(
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        for (auto&& elem : data) {
+            this->push(::std::move(elem));
+        }
     }
     this->push<::std::uint16_t>(data.size());
 }
@@ -114,24 +131,11 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    ::std::span<auto> data
-)
-{
-    if (data.size() > 0) {
-        for (auto&& elem : data) {
-            this->push(::std::move(elem));
-        }
-    }
-    this->push<::std::uint16_t>(data.size());
-}
-
-template <
-    ::detail::isEnum UserMessageType
 > template <
+    ::detail::isNotSendableData Type,
     ::std::size_t size
 > void ::network::Message<UserMessageType>::push(
-    ::std::span<auto, size> data
+    ::std::span<Type, size> data
 )
 {
     if (data.size() > 0) {
@@ -140,6 +144,8 @@ template <
         }
     }
 }
+
+
 
 template <
     ::detail::isEnum UserMessageType
@@ -159,6 +165,8 @@ template <
 {
     this->push(::std::span{ data });
 }
+
+
 
 template <
     ::detail::isEnum UserMessageType
@@ -185,6 +193,8 @@ template <
     this->push(::std::span{ data });
 }
 
+
+
 template <
     ::detail::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::push(
@@ -205,6 +215,8 @@ template <
     this->push(::std::move(data.second));
 }
 
+
+
 template <
     ::detail::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::push(
@@ -224,18 +236,6 @@ template <
     this->push(::std::span{ data.data(), data.data() + data.size() });
 }
 
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::pushRawMemory(
-    auto* ptrToData,
-    const ::std::size_t size
-)
-{
-    this->push(::std::span{ ptrToData, ptrToData + size });
-}
-
 template <
     ::detail::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::push(
@@ -249,14 +249,24 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
+> void ::network::Message<UserMessageType>::pushRawMemory(
+    auto* ptrToData,
+    const ::std::size_t size
+)
+{
+    this->push(::std::span{ ptrToData, ptrToData + size });
+}
+
+
+
+template <
+    ::detail::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pushAll(
     auto&&... args
 )
 {
     (this->push(::std::forward<decltype(args)>(args)), ...);
 }
-
-
 
 template <
     ::detail::isEnum UserMessageType
@@ -282,7 +292,6 @@ template <
 
 
 // ------------------------------------------------------------------ pull
-// Extract any POD-like data from the end of the body
 
 template <
     ::detail::isEnum UserMessageType
@@ -298,6 +307,8 @@ template <
     // resize so he doesn't actually yeet my data
     m_body.resize(m_header.bodySize);
 }
+
+
 
 template <
     ::detail::isEnum UserMessageType
@@ -316,6 +327,21 @@ template <
 
         // resize so he doesn't actually yeet my data
         m_body.resize(m_header.bodySize);
+    }
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    ::detail::isNotSendableData Type
+> void ::network::Message<UserMessageType>::pull(
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        for (auto& elem : data | ::std::views::reverse) {
+            this->pull(elem);
+        }
     }
 }
 
@@ -342,8 +368,11 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
+> template <
+    ::detail::isNotSendableData Type,
+    ::std::size_t size
 > void ::network::Message<UserMessageType>::pull(
-    ::std::span<auto> data
+    ::std::span<Type, size> data
 )
 {
     if (data.size() > 0) {
@@ -353,20 +382,7 @@ template <
     }
 }
 
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::pull(
-    ::std::span<auto, size> data
-)
-{
-    if (data.size() > 0) {
-        for (auto& elem : data | ::std::views::reverse) {
-            this->pull(elem);
-        }
-    }
-}
+
 
 template <
     ::detail::isEnum UserMessageType
@@ -414,20 +430,6 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> template <
-    typename DataType
-> auto ::network::Message<UserMessageType>::pull()
-    -> DataType
-{
-    DataType data;
-    this->pull(data);
-    return data;
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pullRawMemory(
     ::std::vector<::std::byte>& refToData,
     const ::std::size_t size
@@ -457,6 +459,18 @@ template <
 }
 
 
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    typename DataType
+> auto ::network::Message<UserMessageType>::pull()
+    -> DataType
+{
+    DataType data;
+    this->pull(data);
+    return data;
+}
 
 template <
     ::detail::isEnum UserMessageType
@@ -534,6 +548,14 @@ template <
     -> Message<UserMessageType>::SystemType
 {
     return static_cast<Message<UserMessageType>::SystemType>(m_header.packetType);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> auto ::network::Message<UserMessageType>::getTypeAsInt() const
+    -> ::std::uint16_t
+{
+    return m_header.packetType;
 }
 
 template <
