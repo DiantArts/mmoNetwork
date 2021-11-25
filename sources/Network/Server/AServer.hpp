@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Network/ANode.hpp>
+#include <Network/Connection.hpp>
 
 
 
@@ -48,12 +49,12 @@ public:
 
     void send(
         ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> client
+        ::std::shared_ptr<::network::Connection<UserMessageType>> client
     );
 
     void send(
         ::network::Message<UserMessageType>&& message,
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> client
+        ::std::shared_ptr<::network::Connection<UserMessageType>> client
     );
 
     void send(
@@ -68,12 +69,12 @@ public:
 
     void send(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... clients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... clients
     );
 
     void sendToAllClients(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> auto... ignoredClients
+        ::detail::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... ignoredClients
     );
 
     void sendToAllClients(
@@ -87,13 +88,7 @@ public:
 
     virtual auto defaultReceiveBehaviour(
         ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
-    ) -> bool
-        override final;
-
-    virtual auto defaultReceiveBehaviour(
-        ::network::Message<UserMessageType>& message,
-        ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) -> bool
         override final;
 
@@ -103,23 +98,23 @@ public:
 
     // handle the disconnection
     virtual void onDisconnect(
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) override;
 
     // refuses the identification by returning false, username received already
     [[ nodiscard ]] virtual auto onAuthentification(
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) -> bool
         override;
 
     virtual void onConnectionValidated(
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) override;
 
 
 
     virtual void onAuthentificationDenial(
-        ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) override;
 
 
@@ -129,10 +124,7 @@ public:
 
     [[ nodiscard ]] auto getConnection(
         ::detail::Id id
-    ) -> ::std::shared_ptr<::network::tcp::Connection<UserMessageType>>;
-
-    [[ nodiscard ]] auto getConnectionsSharableInformations() const
-        -> ::std::vector<::std::pair<::std::string, ::detail::Id>>;
+    ) -> ::std::shared_ptr<::network::Connection<UserMessageType>>;
 
 
 
@@ -141,8 +133,8 @@ private:
     // hardware connection to the server
     ::asio::ip::tcp::acceptor m_asioAcceptor;
 
-    ::std::deque<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> m_incommingConnections;
-    ::std::deque<::std::shared_ptr<::network::tcp::Connection<UserMessageType>>> m_connections;
+    ::std::deque<::std::shared_ptr<::network::Connection<UserMessageType>>> m_incommingConnections;
+    ::std::deque<::std::shared_ptr<::network::Connection<UserMessageType>>> m_connections;
     // ::std::vector<::network::server::Room> m_rooms;
 
     ::detail::Id m_idCounter{ 1 };

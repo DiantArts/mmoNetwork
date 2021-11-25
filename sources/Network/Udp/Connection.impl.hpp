@@ -5,10 +5,9 @@
 template <
     ::detail::isEnum UserMessageType
 > ::network::udp::Connection<UserMessageType>::Connection(
-    ::network::ANode<UserMessageType>& owner
+    ::asio::io_context& asioContext
 )
-    : ::network::AConnection<UserMessageType>{ owner }
-    , m_socket{ owner.getAsioContext() }
+    : m_socket{ asioContext }
 {
     m_socket.open(::asio::ip::udp::v4());
     m_socket.bind(::asio::ip::udp::endpoint(::asio::ip::udp::v4(), 0));
@@ -20,11 +19,7 @@ template <
     ::detail::isEnum UserMessageType
 > ::network::udp::Connection<UserMessageType>::~Connection()
 {
-    if (m_socket.is_open()) {
-        m_socket.cancel();
-        m_socket.close();
-        ::std::cout << "[Connection:UDP] Disconnected.\n";
-    }
+    this->close();
 }
 
 
@@ -40,22 +35,23 @@ template <
 {
     m_socket.async_connect(
         ::asio::ip::udp::endpoint{ ::asio::ip::address::from_string(host), port },
-        [this](
+        [&](
             const ::std::error_code& errorCode
         ) {
             if (errorCode) {
                 if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:UDP] Operation canceled\n";
+                    ::std::cerr << "[Connection:UDP:target] Operation canceled\n";
                 } else {
-                    ::std::cerr << "[ERROR:UDP] Client failed to connect to the tcp Server.\n";
-                    this->close();
+                    ::std::cerr << "[ERROR:Connection:UDP:target] "
+                        << "Client failed to target " << host << ':' << port << ".\n";
+                    m_connection->disconnect();
                 }
             } else {
                 this->readHeader();
             }
         }
     );
-        ::std::cout << "[Client:UDP] Targetting " << host << ":" << port << ".\n";
+    ::std::cout << "[Client:UDP] Targetting " << host << ":" << port << ".\n";
 }
 
 template <
@@ -65,8 +61,10 @@ template <
     if (m_socket.is_open()) {
         m_socket.cancel();
         m_socket.close();
-        m_owner.onDisconnect(this->shared_from_this());
-        ::std::cout << "[Connection:UDP] Connection closed.\n";
+        ::std::cout << "[Connection:UDP:" << m_connection->informations.id << "] Connection closed.\n";
+    }
+    if (m_connection) {
+        m_connection.reset();
     }
 }
 
@@ -94,7 +92,7 @@ template <
         ::std::forward<decltype(args)>(args)...
     };
     ::asio::post(
-        m_owner.getAsioContext(),
+        m_connection->m_owner.getAsioContext(),
         [this, message]()
         {
             auto wasOutQueueEmpty{ m_messagesOut.empty() };
@@ -112,7 +110,7 @@ template <
     ::network::Message<UserMessageType> message
 )
 {
-    ::asio::post(m_owner.getAsioContext(), ::std::bind_front(
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<UserMessageType> message
         )
@@ -133,14 +131,6 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::udp::Connection<UserMessageType>::getOwner() const
-    -> const ::network::ANode<UserMessageType>&
-{
-    return m_owner;
-}
-
-template <
-    ::detail::isEnum UserMessageType
 > auto ::network::udp::Connection<UserMessageType>::getPort() const
     -> ::std::uint16_t
 {
@@ -153,6 +143,15 @@ template <
     -> ::std::string
 {
     return m_socket.local_endpoint().address().to_string();
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::udp::Connection<UserMessageType>::assignConnection(
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
+)
+{
+    m_connection = ::std::move(connection);
 }
 
 
@@ -179,7 +178,7 @@ template <
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Write header failed: " << errorCode.message() << ".\n";
-                    this->close();
+                    m_connection->disconnect();
                 }
             } else if (bytesAlreadySent + length < m_messagesOut.front().getSendingHeaderSize()) {
                 this->writeHeader(bytesAlreadySent + length);
@@ -217,7 +216,7 @@ template <
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Write body failed: " << errorCode.message() << ".\n";
-                    this->close();
+                    m_connection->disconnect();
                 }
             } else if (bytesAlreadySent + length < m_messagesOut.front().getBodySize()) {
                 this->writeBody(bytesAlreadySent + length);
@@ -256,7 +255,7 @@ template <
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Read header failed: " << errorCode.message() << ".\n";
-                    this->close();
+                    m_connection->disconnect();
                 }
             } else if (bytesAlreadyRead + length < m_bufferIn.getSendingHeaderSize()) {
                 this->readHeader(bytesAlreadyRead + length);
@@ -292,7 +291,7 @@ template <
                     ::std::cerr << "[Connection:UDP] Operation canceled\n";
                 } else {
                     ::std::cerr << "[ERROR:UDP] Read body failed: " << errorCode.message() << ".\n";
-                    this->close();
+                    m_connection->disconnect();
                 }
             } else if (bytesAlreadyRead + length < m_bufferIn.getBodySize()) {
                 this->readBody(bytesAlreadyRead + length);
@@ -307,6 +306,6 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::transferBufferToInQueue()
 {
-    m_owner.pushIncommingMessage(network::OwnedMessage<UserMessageType>{ m_bufferIn, nullptr });
+    m_connection->m_owner.pushIncommingMessage(network::OwnedMessage<UserMessageType>{ m_bufferIn, nullptr });
     this->readHeader();
 }

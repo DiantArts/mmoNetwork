@@ -1,6 +1,16 @@
 #pragma once
 
-#include <Network/AConnection.hpp>
+#include <Detail/Concepts.hpp>
+#include <Detail/Queue.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
+
+#ifdef ENABLE_ENCRYPTION
+#include <Security/Cipher.hpp>
+#endif
+
+namespace network { template <::detail::isEnum UserMessageType> class ANode; }
+namespace network { template <::detail::isEnum UserMessageType> class Connection; }
 
 
 
@@ -10,17 +20,14 @@ namespace network::udp {
 
 template <
     ::detail::isEnum UserMessageType
-> class Connection
-    : public ::network::AConnection<UserMessageType>
-    , public ::std::enable_shared_from_this<Connection<UserMessageType>>
-{
+> class Connection {
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
     Connection(
-        ::network::ANode<UserMessageType>& owner
+        ::asio::io_context& asioContext
     );
 
     // doesnt call onDisconnect
@@ -57,15 +64,15 @@ public:
 
     // ------------------------------------------------------------------ other
 
-    [[ nodiscard ]] auto getOwner() const
-        -> const ::network::ANode<UserMessageType>&;
-
     [[ nodiscard ]] auto getPort() const
         -> ::std::uint16_t;
 
     [[ nodiscard ]] auto getAddress() const
         -> ::std::string;
 
+    void assignConnection(
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
+    );
 
 
 private:
@@ -98,14 +105,11 @@ private:
 
 private:
 
-    ::asio::ip::udp::socket m_socket;
+    ::std::shared_ptr<::network::Connection<UserMessageType>> m_connection;
 
-    using ::network::AConnection<UserMessageType>::m_owner;
-    using ::network::AConnection<UserMessageType>::m_bufferIn;
-    using ::network::AConnection<UserMessageType>::m_messagesOut;
-#ifdef ENABLE_ENCRYPTION
-    using ::network::AConnection<UserMessageType>::m_cipher;
-#endif // ENABLE_ENCRYPTION
+    ::asio::ip::udp::socket m_socket;
+    ::network::Message<UserMessageType> m_bufferIn;
+    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
 
 };
 

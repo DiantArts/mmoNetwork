@@ -1,6 +1,16 @@
 #pragma once
 
-#include <Network/AConnection.hpp>
+#include <Detail/Concepts.hpp>
+#include <Detail/Queue.hpp>
+#include <Network/Message.hpp>
+#include <Network/OwnedMessage.hpp>
+
+#ifdef ENABLE_ENCRYPTION
+#include <Security/Cipher.hpp>
+#endif
+
+namespace network { template <::detail::isEnum UserMessageType> class ANode; }
+namespace network { template <::detail::isEnum UserMessageType> class Connection; }
 
 
 
@@ -10,17 +20,13 @@ namespace network::tcp {
 
 template <
     ::detail::isEnum UserMessageType
-> class Connection
-    : public ::network::AConnection<UserMessageType>
-    , public ::std::enable_shared_from_this<Connection<UserMessageType>>
-{
+> class Connection {
 
 public:
 
     // ------------------------------------------------------------------ *structors
 
     Connection(
-        ::network::ANode<UserMessageType>& owner,
         ::asio::ip::tcp::socket socket
     );
 
@@ -31,9 +37,8 @@ public:
 
     // ------------------------------------------------------------------ async - connection
 
-    auto connectToClient(
-        ::detail::Id id
-    ) -> bool;
+    auto startConnectingToClient()
+        -> bool;
 
     void startConnectingToServer(
         const ::std::string& host,
@@ -62,7 +67,8 @@ public:
         ::network::Message<UserMessageType> message
     );
 
-    bool hasSendingMessagesAwaiting() const;
+    auto hasSendingMessagesAwaiting() const
+        -> bool;
 
     void sendAwaitingMessages();
 
@@ -70,27 +76,11 @@ public:
 
     // ------------------------------------------------------------------ async - in
 
-    void startReadMessage();
-
-    void pullIncommingMessage();
-
-    void pullIncommingMessages();
-
-    void blockingPullIncommingMessages();
+    void startReceivingMessage();
 
 
 
     // ------------------------------------------------------------------ other
-
-    // TODO: create struct sharable info
-    [[ nodiscard ]] auto getSharableInformations() const
-        -> ::std::pair<::std::string, ::detail::Id>;
-
-    [[ nodiscard ]] auto getId() const
-        -> ::detail::Id;
-
-    [[ nodiscard ]] auto getOwner() const
-        -> const ::network::ANode<UserMessageType>&;
 
     [[ nodiscard ]] auto getPort() const
         -> ::std::uint16_t;
@@ -98,13 +88,9 @@ public:
     [[ nodiscard ]] auto getAddress() const
         -> ::std::string;
 
-    [[ nodiscard ]] auto getUserName() const
-        -> const ::std::string&;
-
-    void setUserName(
-        ::std::string newName
+    void assignConnection(
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     );
-
 
 
 private:
@@ -156,11 +142,6 @@ private:
     void identification();
 
     void sendIdentificationDenied();
-
-
-    void sendPublicKey();
-
-    void readPublicKey();
 
 
 
@@ -224,21 +205,24 @@ private:
 
 
 
+    // ------------------------------------------------------------------ async - udp setup
+
+    void sendUdpAddr();
+
+    void receiveUdpAddr();
+
+
+
+
 private:
 
-    ::asio::ip::tcp::socket m_socket;
+    ::std::shared_ptr<::network::Connection<UserMessageType>> m_connection;
 
-    ::detail::Id m_id{ 1 };
-    ::std::string m_userName;
+    ::asio::ip::tcp::socket m_socket;
+    ::network::Message<UserMessageType> m_bufferIn;
+    ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
 
     bool m_isSendAllowed{ false };
-
-    using ::network::AConnection<UserMessageType>::m_owner;
-    using ::network::AConnection<UserMessageType>::m_bufferIn;
-    using ::network::AConnection<UserMessageType>::m_messagesOut;
-#ifdef ENABLE_ENCRYPTION
-    using ::network::AConnection<UserMessageType>::m_cipher;
-#endif // ENABLE_ENCRYPTION
 
     ::std::mutex m_mutex;
     ::std::condition_variable m_blocker;

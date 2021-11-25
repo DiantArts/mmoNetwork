@@ -10,25 +10,25 @@ template <
 #ifdef ENABLE_ENCRYPTION
     // send public key
     this->sendMessage<[](...){}>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::publicKey, m_cipher.getPublicKey()
+        ::network::Message<UserMessageType>::SystemType::publicKey, m_connection->m_cipher.getPublicKey()
     });
 
     // read public key
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
         if (
-            self.m_bufferIn.getTypeAsSystemType() ==
+            connection->tcp.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::publicKey
         ) {
-            self.m_cipher.setTargetPublicKey(self.m_bufferIn.template pull<::security::Cipher::PublicKey>());
-            if (self.m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
-                self.serverHandshake();
+            connection->m_cipher.setTargetPublicKey(connection->tcp.m_bufferIn.template pull<::security::Cipher::PublicKey>());
+            if (connection->m_owner.getType() == ::network::ANode<UserMessageType>::Type::server) {
+                connection->tcp.serverHandshake();
             } else {
-                self.clientHandshake();
+                connection->tcp.clientHandshake();
             }
         } else {
-            ::std::cerr << "[ERROR:Identification:TCP:" << self.m_id << "] Identification failed, "
-                << "unexpected message received: " << self.m_bufferIn.getTypeAsInt() << ".\n";
-            self.disconnect();
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Identification failed, "
+                << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
+            connection->disconnect();
         }
     }>();
 
@@ -39,7 +39,7 @@ template <
     } else {
         this->clientWaitIdentificationAcceptance();
     }
-    ::std::cerr << "[Connection:TCP:" << m_id << "] Identification ignored.\n";
+    ::std::cerr << "[Connection:TCP:" << m_connection->informations.id << "] Identification ignored.\n";
 
 #endif // ENABLE_ENCRYPTION
 }
@@ -48,10 +48,10 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendIdentificationDenial()
 {
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.disconnect();
+    this->sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
+        connection->disconnect();
     }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id
+        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_connection->informations.id
     });
 }
 
@@ -67,7 +67,7 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverHandshake()
 {
-    auto baseValue{ m_cipher.generateRandomData(1024) };
+    auto baseValue{ m_connection->m_cipher.generateRandomData(1024) };
     this->serverSendHandshake(::std::vector{ baseValue });
     this->serverReadHandshake(::std::move(baseValue));
 }
@@ -79,7 +79,7 @@ template <
     ::std::vector<::std::byte>&& baseValue
 )
 {
-    // m_cipher.encrypt(baseValue);
+    // m_connection->m_cipher.encrypt(baseValue);
     this->sendMessage<[](...){}>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::proposeHandshake, ::std::move(baseValue)
     });
@@ -92,35 +92,35 @@ template <
     ::std::vector<::std::byte>&& baseValue
 )
 {
-    m_cipher.scramble(baseValue);
+    m_connection->m_cipher.scramble(baseValue);
     this->receiveMessage<[](
-        ::network::tcp::Connection<UserMessageType>& self,
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection,
         ::std::vector<::std::byte> baseValue
     ){
         if (
-            self.m_bufferIn.getTypeAsSystemType() ==
+            connection->tcp.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::resolveHandshake
         ) {
-            auto receivedValue{ self.m_bufferIn.template pull<::std::vector<::std::byte>>() };
-            // self.m_cipher.decrypt(receivedValue);
+            auto receivedValue{ connection->tcp.m_bufferIn.template pull<::std::vector<::std::byte>>() };
+            // connection->m_cipher.decrypt(receivedValue);
             if (receivedValue == baseValue) {
-                if (self.m_owner.onIdentification(self.shared_from_this())) {
-                    self.serverSendIdentificationAcceptance();
-                    ::std::cerr << "[Connection:TCP:" << self.m_id << "] Identification successful.\n";
+                if (connection->m_owner.onIdentification(connection)) {
+                    connection->tcp.serverSendIdentificationAcceptance();
+                    ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] Identification successful.\n";
                 } else {
-                    self.m_owner.onIdentificationDenial(self.shared_from_this());
-                    self.sendIdentificationDenial();
+                    connection->m_owner.onIdentificationDenial(connection);
+                    connection->tcp.sendIdentificationDenial();
                 }
             } else {
-                ::std::cerr << "[ERROR:Identification:TCP:" << self.m_id
+                ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id
                     << "] Handshake failed, incorrect value\n";
-                self.m_owner.onIdentificationDenial(self.shared_from_this());
-                self.sendIdentificationDenial();
+                connection->m_owner.onIdentificationDenial(connection);
+                connection->tcp.sendIdentificationDenial();
             }
         } else {
-            ::std::cerr << "[ERROR:Identification:TCP:" << self.m_id << "] Handshake failed, "
-                << "unexpected message received: " << self.m_bufferIn.getTypeAsInt() << ".\n";
-            self.disconnect();
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Handshake failed, "
+                << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
+            connection->disconnect();
         }
     }>(::std::move(baseValue));
 }
@@ -141,19 +141,19 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientReadHandshake()
 {
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
         if (
-            self.m_bufferIn.getTypeAsSystemType() ==
+            connection->tcp.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::proposeHandshake
         ) {
-            auto receivedValue{ self.m_bufferIn.template pull<::std::vector<::std::byte>>() };
-            // self.m_cipher.decrypt(receivedValue);
-            self.clientResolveHandshake(::std::move(receivedValue));
+            auto receivedValue{ connection->tcp.m_bufferIn.template pull<::std::vector<::std::byte>>() };
+            // connection->m_cipher.decrypt(receivedValue);
+            connection->tcp.clientResolveHandshake(::std::move(receivedValue));
         } else {
-            ::std::cerr << "[ERROR:Identification:TCP:" << self.m_id << "] Handshake failed, "
-                << "unexpected message received: " << self.m_bufferIn.getTypeAsInt() << ".\n";
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Handshake failed, "
+                << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
 
-            self.disconnect();
+            connection->disconnect();
         }
     }>();
 }
@@ -165,14 +165,14 @@ template <
     ::std::vector<::std::byte>&& receivedValue
 )
 {
-    m_cipher.scramble(receivedValue);
+    m_connection->m_cipher.scramble(receivedValue);
     // m_cipher.encrypt(receivedValue);
 
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        if (self.m_owner.onIdentification(self.shared_from_this())) {
-            self.clientWaitIdentificationAcceptance();
+    this->sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
+        if (connection->m_owner.onIdentification(connection)) {
+            connection->tcp.clientWaitIdentificationAcceptance();
         } else {
-            self.disconnect();
+            connection->disconnect();
         }
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::resolveHandshake,
@@ -194,10 +194,10 @@ template <
 > void ::network::tcp::Connection<UserMessageType>::serverSendIdentificationAcceptance()
 {
 
-    this->sendMessage<[](::network::tcp::Connection<UserMessageType>& self){
-        self.serverAuthentification();
+    this->sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
+        connection->tcp.serverAuthentification();
     }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_id
+        ::network::Message<UserMessageType>::SystemType::identificationAccepted, m_connection->informations.id
     });
 }
 
@@ -210,26 +210,26 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientWaitIdentificationAcceptance()
 {
-    this->receiveMessage<[](::network::tcp::Connection<UserMessageType>& self){
+    this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
         if (
-            self.m_bufferIn.getTypeAsSystemType() ==
+            connection->tcp.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::identificationAccepted
         ) {
-            self.m_bufferIn.pull(self.m_id);
+            connection->tcp.m_bufferIn.pull(connection->informations.id);
 #ifdef ENABLE_ENCRYPTION
-            ::std::cerr << "[Connection:TCP:" << self.m_id << "] Identification successful.\n";
+            ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] Identification successful.\n";
 #endif // ENABLE_ENCRYPTION
-            self.clientAuthentification();
+            connection->tcp.clientAuthentification();
         } else if (
-            self.m_bufferIn.getTypeAsSystemType() ==
+            connection->tcp.m_bufferIn.getTypeAsSystemType() ==
             ::network::Message<UserMessageType>::SystemType::identificationDenied
         ) {
-            self.m_owner.onIdentificationDenial(self.shared_from_this());
-            self.disconnect();
+            connection->m_owner.onIdentificationDenial(connection);
+            connection->disconnect();
         } else {
-            ::std::cerr << "[ERROR:Identification:TCP:" << self.m_id << "] Identification acceptance failed"
-                << ", unexpected message received: " << self.m_bufferIn.getTypeAsInt() << ".\n";
-            self.disconnect();
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Identification acceptance failed"
+                << ", unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
+            connection->disconnect();
         }
     }>();
 }

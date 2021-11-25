@@ -4,13 +4,16 @@
 enum class Enum{ nothing };
 
 
+
 int main(int argc, char **argv)
 {
     ::ClientExample client;
     ::std::thread inMessagesThread;
 
-    try {
-        if (!client.startConnectingToServer(argv[1], ::std::atoi(argv[2]))) {
+    // try {
+        if (!client.connectToServer(argv[1], ::std::atoi(argv[2]))) {
+            ::std::cerr << "ERROR: Could not connect the following server: "
+                << argv[1] << ":" << ::std::atoi(argv[2]) << "." << ::std::endl;
             return EXIT_FAILURE;
         }
 
@@ -29,13 +32,11 @@ int main(int argc, char **argv)
             if (!::std::strncmp(str.c_str(), "/", 1)) {
                 switch (*str.substr(1, 2).c_str()) {
                 case 'q': client.disconnect(); break;
-                case 'c': client.startCall(::std::atoi(str.substr(3).c_str())); break;
-                case 'u': client.messagePeer(str.substr(3)); break;
-                case 's': client.stopCall(); break;
+                case 'u': client.messageUdpServer(str.substr(3)); break;
                 default: ::std::cerr << "[ERROR:SYSTEM] invalid command.\n";
                 }
             } else {
-                client.messageServer(str);
+                client.messageTcpServer(str);
             }
         }
 
@@ -43,20 +44,20 @@ int main(int argc, char **argv)
         inMessagesThread.join();
         return EXIT_SUCCESS;
 
-    } catch (const ::std::exception& e) {
-       ::std::cerr << "ERROR: " << e.what() <<::std::endl;
-        client.disconnect();
-        client.getIncommingMessages().notify();
-        inMessagesThread.join();
-        return EXIT_FAILURE;
+    // } catch (const ::std::exception& e) {
+       // ::std::cerr << "ERROR: " << e.what() <<::std::endl;
+        // client.disconnect();
+        // client.getIncommingMessages().notify();
+        // inMessagesThread.join();
+        // return EXIT_FAILURE;
 
-    } catch (...) {
-       ::std::cerr << "ERROR: unknown" <<::std::endl;
-        client.disconnect();
-        client.getIncommingMessages().notify();
-        inMessagesThread.join();
-        return EXIT_FAILURE;
+    // } catch (...) {
+       // ::std::cerr << "ERROR: unknown" <<::std::endl;
+        // client.disconnect();
+        // client.getIncommingMessages().notify();
+        // inMessagesThread.join();
+        // return EXIT_FAILURE;
 
-    }
+    // }
 
 }

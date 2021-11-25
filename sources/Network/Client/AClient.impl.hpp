@@ -26,7 +26,6 @@ template <
 {
 
     this->disconnectFromServer();
-    this->closePeerConnection();
     this->getIncommingMessages().notify();
 }
 
@@ -35,7 +34,7 @@ template <
 > auto ::network::client::AClient<UserMessageType>::isConnected() const
     -> bool
 {
-    return this->isConnectedToServer() || this->isConnectedToPeer();
+    return this->isConnectedToServer();
 }
 
 template <
@@ -43,7 +42,7 @@ template <
 > auto ::network::client::AClient<UserMessageType>::getUdpPort() const
     -> ::std::uint16_t
 {
-    return m_connectionToPeer->getPort();
+    return m_connectionToServer->udp.getPort();
 }
 
 
@@ -52,140 +51,93 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::client::AClient<UserMessageType>::startConnectingToServer(
-    const ::std::string& host,
-    const ::std::uint16_t port
-) -> bool
-{
-    try {
-        m_tcpConnectionToServer = ::std::make_shared<::network::tcp::Connection<UserMessageType>>(
-            *this,
-            ::asio::ip::tcp::socket(this->getAsioContext())
-        );
-        m_tcpConnectionToServer->startConnectingToServer(host, port);
-        ::std::cout << "[Client:TCP:" << m_tcpConnectionToServer->getId()
-            << "] Connection request sent to " << host << ":" << port << ".\n";
-        if (!this->getThreadContext().joinable()) {
-            this->getThreadContext() = ::std::thread([this](){ this->getAsioContext().run(); });
-        }
-    } catch (::std::exception& e) {
-        ::std::cerr << "Exception: " << e.what() << '\n';
-        return false;
-    }
-    return true;
-}
-
-template <
-    ::detail::isEnum UserMessageType
 > auto ::network::client::AClient<UserMessageType>::connectToServer(
     const ::std::string& host,
     const ::std::uint16_t port
 ) -> bool
 {
-    // TODO: Client block until connected
-    if (!this->startConnectingToServer(host, port)) {
+    if (this->isConnectedToServer()) {
         return false;
     }
-    m_tcpConnectionToServer->waitNotification();
-    return this->isConnectedToServer();
+    try {
+        ::asio::io_context::work idleWork{ this->getAsioContext() };
+        this->getThreadContext() = ::std::thread([this](){
+            this->getAsioContext().run();
+        });
+        m_connectionToServer = ::network::Connection<UserMessageType>::create(*this, host, port);
+        if (this->isConnectedToServer()) {
+            return true;
+        }
+    } catch (::std::exception& e) {
+        ::std::cerr << "Exception: " << e.what() << '\n';
+    }
+    this->disconnectFromServer();
+    return false;
+
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::client::AClient<UserMessageType>::disconnectFromServer()
 {
-    if (m_tcpConnectionToServer) {
+    if (m_connectionToServer) {
         if (this->isConnectedToServer()) {
-            m_tcpConnectionToServer->disconnect();
+            m_connectionToServer->disconnect();
         }
-        m_tcpConnectionToServer.reset();
+        m_connectionToServer.reset();
     }
 }
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::sendToServer(
-    ::network::Message<UserMessageType>& message
-)
-{
-    m_tcpConnectionToServer->send(message);
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::sendToServer(
-    ::network::Message<UserMessageType>&& message
-)
-{
-    m_tcpConnectionToServer->send(::std::move(message));
-}
-
-
 
 template <
     ::detail::isEnum UserMessageType
 > auto ::network::client::AClient<UserMessageType>::isConnectedToServer() const
     -> bool
 {
-    return m_tcpConnectionToServer && m_tcpConnectionToServer->isConnected();
+    return m_connectionToServer && m_connectionToServer->tcp.isConnected();
 }
 
 
 
-// ------------------------------------------------------------------ peer
+// ------------------------------------------------------------------ tcp
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::openUdpConnection()
+> void ::network::client::AClient<UserMessageType>::tcpSendToServer(
+    ::network::Message<UserMessageType>& message
+)
 {
-    m_connectionToPeer = ::std::make_shared<::network::udp::Connection<UserMessageType>>(*this);
+    m_connectionToServer->tcp.send(message);
 }
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::client::AClient<UserMessageType>::targetPeer(
-    const ::std::string& host,
-    const ::std::uint16_t port
-) -> bool
-{
-    try {
-        m_connectionToPeer->target(host, port);
-        if (!this->getThreadContext().joinable()) {
-            this->getThreadContext() = ::std::thread([this](){ this->getAsioContext().run(); });
-        }
-    } catch (::std::exception& e) {
-        ::std::cerr << "Exception: " << e.what() << '\n';
-        return false;
-    }
-    return true;
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::closePeerConnection()
-{
-    if (this->isConnectedToPeer()) {
-        m_connectionToPeer->close();
-        ::std::cout << "[Client:UDP] Disconnected.\n";
-    }
-    m_connectionToPeer.reset();
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::sendToPeer(
+> void ::network::client::AClient<UserMessageType>::tcpSendToServer(
     ::network::Message<UserMessageType>&& message
 )
 {
-    m_connectionToPeer->send(::std::move(message));
+    m_connectionToServer->tcp.send(::std::move(message));
+}
+
+
+
+// ------------------------------------------------------------------ udp
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::client::AClient<UserMessageType>::udpSendToServer(
+    ::network::Message<UserMessageType>& message
+)
+{
+    m_connectionToServer->udp.send(message);
 }
 
 template <
     ::detail::isEnum UserMessageType
-> auto ::network::client::AClient<UserMessageType>::isConnectedToPeer() const
-    -> bool
+> void ::network::client::AClient<UserMessageType>::udpSendToServer(
+    ::network::Message<UserMessageType>&& message
+)
 {
-    return m_connectionToPeer && m_connectionToPeer->isOpen();
+    m_connectionToServer->udp.send(::std::move(message));
 }
 
 
@@ -196,26 +148,25 @@ template <
     ::detail::isEnum UserMessageType
 > auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
     ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 ) -> bool
 {
-    switch (message.getType()) {
-    default:
-        return false;
+    switch (message.getTypeAsSystemType()) {
+    default: break;
     }
-    return true;
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> auto ::network::client::AClient<UserMessageType>::defaultReceiveBehaviour(
-    ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
-) -> bool
-{
-    switch (message.getType()) {
-    default:
-        return false;
+    if (
+        message.getTransmissionProtocol() ==
+        ::network::Message<UserMessageType>::TransmissionProtocol::tcp
+    ) {
+        switch (message.getTypeAsSystemType()) {
+        case ::network::Message<UserMessageType>::SystemType::ping: connection->tcp.send(message); break;
+        default: return false;
+        }
+    } else {
+        switch (message.getTypeAsSystemType()) {
+        case ::network::Message<UserMessageType>::SystemType::ping: connection->udp.send(message); break;
+        default: return false;
+        }
     }
     return true;
 }
@@ -227,48 +178,41 @@ template <
 template <
     ::detail::isEnum UserMessageType
 > void ::network::client::AClient<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    if (this->isConnectedToPeer()) {
-        m_connectionToPeer->close();
-    }
     ANode<UserMessageType>::onDisconnect(connection);
 }
 
 template <
     ::detail::isEnum UserMessageType
 > auto ::network::client::AClient<UserMessageType>::onAuthentification(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 ) -> bool
 
 {
-    ::std::cout << "[Client:TCP:" << connection->getId() << "] onAuthentification.\n";
-    connection->setUserName("user"s + ::std::to_string(connection->getId()));
+    ::std::cout << "[Client:TCP:" << connection->informations.id << "] onAuthentification.\n";
+    connection->setUserName("user"s + ::std::to_string(connection->informations.id));
     return true;
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::client::AClient<UserMessageType>::onConnectionValidated(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[Client:TCP:" << connection->getId() << "] onConnectionValidated.\n";
+    ::std::cout << "[Client:TCP:" << connection->informations.id << "] onConnectionValidated.\n";
+
     // start reading/writing tcp
-    connection->startReadMessage();
-    if (connection->hasSendingMessagesAwaiting()) {
-        connection->sendAwaitingMessages();
+    connection->tcp.startReceivingMessage();
+    if (connection->tcp.hasSendingMessagesAwaiting()) {
+        connection->tcp.sendAwaitingMessages();
     }
-}
 
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::client::AClient<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
-)
-{
-    ::std::cout << "[Client:UDP] OnDisconnect.\n";
+    // TODO: udp part
+    // connection->udp.startReceivingMessage();
+    // if (connection->udp.hasSendingMessagesAwaiting()) {
+        // connection->udp.sendAwaitingMessages();
+    // }
 }

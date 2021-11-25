@@ -36,19 +36,9 @@ template <
 > void ::network::ANode<UserMessageType>::pullIncommingMessage()
 {
     auto message{ this->getIncommingMessages().pop_front() };
-    if (
-        message.getTransmissionProtocol() ==
-        ::network::Message<UserMessageType>::TransmissionProtocol::tcp
-    ) {
-        const auto& remote{ message.getRemoteAsTcp() };
-        if (!this->defaultReceiveBehaviour(message, remote)) {
-            this->onReceive(message, remote);
-        }
-    } else {
-        auto remote{ message.getRemoteAsUdp() };
-        if (!this->defaultReceiveBehaviour(message, remote)) {
-            this->onReceive(message, remote);
-        }
+    const auto& remote{ message.getRemote() };
+    if (!this->defaultReceiveBehaviour(message, remote)) {
+        this->onReceive(message, remote);
     }
 }
 
@@ -118,25 +108,25 @@ template <
 
 
 
-// ------------------------------------------------------------------ tcp events
+// ------------------------------------------------------------------ events
 
 template <
     ::detail::isEnum UserMessageType
 > auto ::network::ANode<UserMessageType>::onConnect(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 ) -> bool
 {
-    ::std::cout << "[ANode:TCP] onConnect.\n";
+    ::std::cout << "[ANode] onConnect.\n";
     return true;
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::ANode<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[ANode:TCP:" << connection->getId() << "] onDisconnect.\n";
+    ::std::cout << "[ANode:" << connection->informations.userName << "] onDisconnect.\n";
 }
 
 // after receiving
@@ -144,78 +134,45 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::ANode<UserMessageType>::onReceive(
     ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[ANode:TCP] onReceive.\n";
+    ::std::cout << "[ANode] onReceive.\n";
 }
 
 template <
     ::detail::isEnum UserMessageType
 > auto ::network::ANode<UserMessageType>::onIdentification(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 ) -> bool
 {
-    ::std::cout << "[ANode:TCP:" << connection->getId() << "] onIdentification.\n";
+    ::std::cout << "[ANode:" << connection->informations.userName << "] onIdentification.\n";
     return true;
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::ANode<UserMessageType>::onConnectionDenial(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[ANode:TCP] onConnectionDenial.\n";
+    ::std::cout << "[ANode] onConnectionDenial.\n";
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::ANode<UserMessageType>::onIdentificationDenial(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cerr << "[ANode:TCP:" << connection->getId() << "] Identification denied.\n";
+    ::std::cerr << "[ANode:" << connection->informations.userName << "] Identification denied.\n";
 }
 
 template <
     ::detail::isEnum UserMessageType
 > void ::network::ANode<UserMessageType>::onAuthentificationDenial(
-    ::std::shared_ptr<::network::tcp::Connection<UserMessageType>> connection
+    ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cerr << "[ANode:TCP:" << connection->getId() << "] Authentification denied.\n";
-}
-
-
-
-// ------------------------------------------------------------------ udp events
-
-template <
-    ::detail::isEnum UserMessageType
-> auto ::network::ANode<UserMessageType>::onConnect(
-    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
-) -> bool
-{
-    ::std::cout << "[ANode:UDP] onConnect.\n";
-    return true;
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::ANode<UserMessageType>::onDisconnect(
-    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
-)
-{
-    ::std::cout << "[ANode:UDP] onDisconnect.\n";
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::ANode<UserMessageType>::onReceive(
-    ::network::Message<UserMessageType>& message,
-    ::std::shared_ptr<::network::udp::Connection<UserMessageType>> connection
-)
-{
-    ::std::cout << "[ANode:UDP] onReceive.\n";
+    ::std::cerr << "[ANode:" << connection->informations.userName << "] Authentification denied.\n";
 }

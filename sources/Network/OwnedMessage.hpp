@@ -4,9 +4,7 @@
 
 
 
-namespace network { template <::detail::isEnum UserMessageType> class AConnection; }
-namespace network::tcp { template <::detail::isEnum UserMessageType> class Connection; }
-namespace network::udp { template <::detail::isEnum UserMessageType> class Connection; }
+namespace network { template <::detail::isEnum UserMessageType> class Connection; }
 
 
 
@@ -26,7 +24,7 @@ public:
 
     OwnedMessage(
         ::network::Message<UserMessageType> message,
-        ::std::shared_ptr<::network::AConnection<UserMessageType>> remote
+        ::std::shared_ptr<::network::Connection<UserMessageType>> remote
     );
 
     ~OwnedMessage();
@@ -35,17 +33,14 @@ public:
 
     // ------------------------------------------------------------------ informations
 
-    auto getRemoteAsTcp()
-        -> ::std::shared_ptr<::network::tcp::Connection<UserMessageType>>;
-
-    auto getRemoteAsUdp()
-        -> ::std::shared_ptr<::network::udp::Connection<UserMessageType>>;
+    auto getRemote()
+        -> ::std::shared_ptr<::network::Connection<UserMessageType>>;
 
 
 
 private:
 
-    ::std::shared_ptr<::network::AConnection<UserMessageType>> m_remote;
+    ::std::shared_ptr<::network::Connection<UserMessageType>> m_remote;
 
 };
 
