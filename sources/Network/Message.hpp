@@ -33,13 +33,10 @@ public:
         authentification,
         authentificationAccepted,
         authentificationDenied,
+        udpInformations,
         ping, // TODO imlement
         message, // TODO imlement
         messageAll,
-        startCall,
-        incommingCall,
-        acceptCall,
-        refuseCall,
         setName,
     };
 

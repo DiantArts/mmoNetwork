@@ -80,7 +80,10 @@ public:
 
     // ------------------------------------------------------------------ events
 
-    // refuses the connection by returning false
+    ////////////////////////////////////////////////////////////
+    /// \brief refuses the connection by returning false
+    ///
+    ////////////////////////////////////////////////////////////
     virtual auto onConnect(
         ::std::shared_ptr<::network::Connection<UserMessageType>> connection
     ) -> bool;

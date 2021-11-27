@@ -47,11 +47,14 @@ template <
                     m_connection->disconnect();
                 }
             } else {
-                this->readHeader();
+                m_isSendAllowed = true;
+                if (this->hasSendingMessagesAwaiting()) {
+                    this->sendAwaitingMessages();
+                }
             }
         }
     );
-    ::std::cout << "[Client:UDP] Targetting " << host << ":" << port << ".\n";
+    ::std::cout << "[Connection::UDP] Targetting " << host << ":" << port << ".\n";
 }
 
 template <
@@ -59,6 +62,7 @@ template <
 > void ::network::udp::Connection<UserMessageType>::close()
 {
     if (m_socket.is_open()) {
+        m_isSendAllowed = false;
         m_socket.cancel();
         m_socket.close();
         ::std::cout << "[Connection:UDP:" << m_connection->informations.id << "] Connection closed.\n";
@@ -91,17 +95,19 @@ template <
         ::std::forward<decltype(messageType)>(messageType),
         ::std::forward<decltype(args)>(args)...
     };
-    ::asio::post(
-        m_connection->m_owner.getAsioContext(),
-        [this, message]()
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
+        [this](
+            ::network::Message<UserMessageType> message
+        )
         {
-            auto wasOutQueueEmpty{ m_messagesOut.empty() };
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
-            if (wasOutQueueEmpty) {
-                this->writeHeader();
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
             }
-        }
-    );
+        },
+        ::std::move(message)
+    ));;
 }
 
 template <
@@ -115,14 +121,47 @@ template <
             ::network::Message<UserMessageType> message
         )
         {
-            auto wasOutQueueEmpty{ m_messagesOut.empty() };
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
-            if (wasOutQueueEmpty) {
-                this->writeHeader();
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
             }
         },
         ::std::move(message)
     ));
+
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> bool ::network::udp::Connection<UserMessageType>::hasSendingMessagesAwaiting() const
+{
+    return !m_messagesOut.empty();
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::udp::Connection<UserMessageType>::sendAwaitingMessages()
+{
+    this->sendQueueMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
+        if (connection->udp.hasSendingMessagesAwaiting()) {
+            connection->udp.sendAwaitingMessages();
+        }
+    }>();
+}
+
+
+
+// ------------------------------------------------------------------ async - in
+
+template <
+    ::detail::isEnum UserMessageType
+> void ::network::udp::Connection<UserMessageType>::startReceivingMessage()
+{
+    this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
+        connection->udp.transferBufferToInQueue();
+        connection->udp.startReceivingMessage();
+    }>();
 }
 
 
@@ -160,8 +199,140 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::udp::Connection<UserMessageType>::writeHeader(
-    ::std::size_t bytesAlreadySent /* = 0 */
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendMessage(
+    ::network::Message<UserMessageType> message,
+    auto&&... args
+)
+{
+    this->sendMessageHeader<successCallback>(::std::move(message), 0, ::std::forward<decltype(args)>(args)...);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendMessageHeader(
+    ::network::Message<UserMessageType> message,
+    ::std::size_t bytesAlreadySent,
+    auto&&... args
+)
+{
+    m_socket.async_send(
+        ::asio::buffer(
+            message.getHeaderAddr() + bytesAlreadySent,
+            message.getSendingHeaderSize() - bytesAlreadySent
+        ),
+        ::std::bind(
+            [this, bytesAlreadySent, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length [[ maybe_unused ]],
+                ::network::Message<UserMessageType> message,
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:UDP:" << id << "] Send header failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadySent + length < message.getSendingHeaderSize()) {
+                    this->sendMessageHeader<successCallback>(::std::move(message), bytesAlreadySent + length, ::std::forward<decltype(args)>(args)...);
+                } else {
+                    if (!message.isBodyEmpty()) {
+                        this->sendMessageBody<successCallback>(::std::move(message), 0, ::std::forward<decltype(args)>(args)...);
+                    } else {
+                        successCallback(
+                            ::std::ref(m_connection),
+                            ::std::forward<decltype(args)>(args)...
+                        );
+                    }
+                }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::move(message),
+            ::std::forward<decltype(args)>(args)...
+        )
+    );
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendMessageBody(
+    ::network::Message<UserMessageType> message,
+    ::std::size_t bytesAlreadySent,
+    auto&&... args
+)
+{
+    m_socket.async_send(
+        ::asio::buffer(
+            message.getBodyAddr() + bytesAlreadySent,
+            message.getBodySize() - bytesAlreadySent
+        ),
+        ::std::bind(
+            [this, bytesAlreadySent, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length [[ maybe_unused ]],
+                ::network::Message<UserMessageType> message,
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:UDP:" << id << "] Send body failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadySent + length < message.getBodySize()) {
+                    this->sendMessageBody<successCallback>(::std::move(message), bytesAlreadySent + length, ::std::forward<decltype(args)>(args)...);
+                } else {
+                    successCallback(
+                        ::std::ref(m_connection),
+                        ::std::forward<decltype(args)>(args)...
+                    );
+                }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::move(message),
+            ::std::forward<decltype(args)>(args)...
+        )
+    );
+}
+
+
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendQueueMessage(
+    auto&&... args
+)
+{
+    this->sendQueueMessageHeader<successCallback>(0, ::std::forward<decltype(args)>(args)...);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendQueueMessageHeader(
+    ::std::size_t bytesAlreadySent,
+    auto&&... args
 )
 {
     m_socket.async_send(
@@ -169,37 +340,51 @@ template <
             m_messagesOut.front().getHeaderAddr() + bytesAlreadySent,
             m_messagesOut.front().getSendingHeaderSize() - bytesAlreadySent
         ),
-        [this, bytesAlreadySent](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:UDP] Operation canceled\n";
+        ::std::bind(
+            [this, bytesAlreadySent, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length [[ maybe_unused ]],
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:UDP:" << id << "] Send header failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadySent + length < m_messagesOut.front().getSendingHeaderSize()) {
+                    this->sendQueueMessageHeader<successCallback>(bytesAlreadySent + length, ::std::forward<decltype(args)>(args)...);
                 } else {
-                    ::std::cerr << "[ERROR:UDP] Write header failed: " << errorCode.message() << ".\n";
-                    m_connection->disconnect();
-                }
-            } else if (bytesAlreadySent + length < m_messagesOut.front().getSendingHeaderSize()) {
-                this->writeHeader(bytesAlreadySent + length);
-            } else {
-                if (!m_messagesOut.front().isBodyEmpty()) {
-                    this->writeBody();
-                } else {
-                    m_messagesOut.remove_front();
-                    if (!m_messagesOut.empty()) {
-                        this->writeHeader();
+                    if (!m_messagesOut.front().isBodyEmpty()) {
+                        this->sendQueueMessageBody<successCallback>(0, ::std::forward<decltype(args)>(args)...);
+                    } else {
+                        m_messagesOut.remove_front();
+                        successCallback(
+                            ::std::ref(m_connection),
+                            ::std::forward<decltype(args)>(args)...
+                        );
                     }
                 }
-            }
-        }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::forward<decltype(args)>(args)...
+        )
     );
 }
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::udp::Connection<UserMessageType>::writeBody(
-    ::std::size_t bytesAlreadySent /* = 0 */
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::sendQueueMessageBody(
+    ::std::size_t bytesAlreadySent,
+    auto&&... args
 )
 {
     m_socket.async_send(
@@ -207,29 +392,39 @@ template <
             m_messagesOut.front().getBodyAddr() + bytesAlreadySent,
             m_messagesOut.front().getBodySize() - bytesAlreadySent
         ),
-        [this, bytesAlreadySent](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:UDP] Operation canceled\n";
+        ::std::bind(
+            [this, bytesAlreadySent, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length [[ maybe_unused ]],
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:UDP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:UDP:" << id << "] Send body failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadySent + length < m_messagesOut.front().getBodySize()) {
+                    this->sendQueueMessageBody<successCallback>(bytesAlreadySent + length, ::std::forward<decltype(args)>(args)...);
                 } else {
-                    ::std::cerr << "[ERROR:UDP] Write body failed: " << errorCode.message() << ".\n";
-                    m_connection->disconnect();
+                    m_messagesOut.remove_front();
+                    successCallback(
+                        ::std::ref(m_connection),
+                        ::std::forward<decltype(args)>(args)...
+                    );
                 }
-            } else if (bytesAlreadySent + length < m_messagesOut.front().getBodySize()) {
-                this->writeBody(bytesAlreadySent + length);
-            } else {
-                m_messagesOut.remove_front();
-                if (!m_messagesOut.empty()) {
-                    this->writeHeader();
-                }
-            }
-        }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::forward<decltype(args)>(args)...
+        )
     );
 }
-
 
 
 
@@ -237,8 +432,22 @@ template <
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::udp::Connection<UserMessageType>::readHeader(
-    ::std::size_t bytesAlreadyRead /* = 0 */
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::receiveMessage(
+    auto&&... args
+)
+{
+    this->receiveMessageHeader<successCallback>(0, ::std::forward<decltype(args)>(args)...);
+}
+
+template <
+    ::detail::isEnum UserMessageType
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::receiveMessageHeader(
+    ::std::size_t bytesAlreadyRead,
+    auto&&... args
 )
 {
     m_socket.async_receive(
@@ -246,35 +455,51 @@ template <
             m_bufferIn.getHeaderAddr() + bytesAlreadyRead,
             m_bufferIn.getSendingHeaderSize() - bytesAlreadyRead
         ),
-        [this, bytesAlreadyRead](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:UDP] Operation canceled\n";
+        ::std::bind(
+            [this, bytesAlreadyRead, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length,
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:TCP:" << id << "] Receive header failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadyRead + length < m_bufferIn.getSendingHeaderSize()) {
+                    this->receiveMessageHeader<successCallback>(bytesAlreadyRead + length, ::std::forward<decltype(args)>(args)...);
                 } else {
-                    ::std::cerr << "[ERROR:UDP] Read header failed: " << errorCode.message() << ".\n";
-                    m_connection->disconnect();
+                    if (!m_bufferIn.isBodyEmpty()) {
+                        m_bufferIn.updateBodySize();
+                        this->receiveMessageBody<successCallback>(0, ::std::forward<decltype(args)>(args)...);
+                    } else {
+                        successCallback(
+                            ::std::ref(m_connection),
+                            ::std::forward<decltype(args)>(args)...
+                        );
+                    }
                 }
-            } else if (bytesAlreadyRead + length < m_bufferIn.getSendingHeaderSize()) {
-                this->readHeader(bytesAlreadyRead + length);
-            } else {
-                if (!m_bufferIn.isBodyEmpty()) {
-                    m_bufferIn.updateBodySize();
-                    this->readBody();
-                } else {
-                    this->transferBufferToInQueue();
-                }
-            }
-        }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::forward<decltype(args)>(args)...
+        )
     );
 }
 
 template <
     ::detail::isEnum UserMessageType
-> void ::network::udp::Connection<UserMessageType>::readBody(
-    ::std::size_t bytesAlreadyRead /* = 0 */
+> template <
+    auto successCallback
+> void ::network::udp::Connection<UserMessageType>::receiveMessageBody(
+    ::std::size_t bytesAlreadyRead,
+    auto&&... args
 )
 {
     m_socket.async_receive(
@@ -282,23 +507,36 @@ template <
             m_bufferIn.getBodyAddr() + bytesAlreadyRead,
             m_bufferIn.getBodySize() - bytesAlreadyRead
         ),
-        [this, bytesAlreadyRead](
-            const ::std::error_code& errorCode,
-            const ::std::size_t length
-        ) {
-            if (errorCode) {
-                if (errorCode == ::asio::error::operation_aborted) {
-                    ::std::cerr << "[Connection:UDP] Operation canceled\n";
+        ::std::bind(
+            [this, bytesAlreadyRead, id = m_connection->informations.id](
+                const ::std::error_code& errorCode,
+                const ::std::size_t length,
+                auto&&... args
+            ) {
+                if (errorCode) {
+                    if (errorCode == ::asio::error::operation_aborted) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Operation canceled.\n";
+                    } else if (errorCode == ::asio::error::eof) {
+                        ::std::cerr << "[Connection:TCP:" << id << "] Node stopped the connection.\n";
+                        m_connection->disconnect();
+                    } else {
+                        ::std::cerr << "[ERROR:TCP:" << id << "] Receive body failed: "
+                            << errorCode.message() << ".\n";
+                        m_connection->disconnect();
+                    }
+                } else if (bytesAlreadyRead + length < m_bufferIn.getBodySize()) {
+                    this->receiveMessageBody<successCallback>(bytesAlreadyRead + length, ::std::forward<decltype(args)>(args)...);
                 } else {
-                    ::std::cerr << "[ERROR:UDP] Read body failed: " << errorCode.message() << ".\n";
-                    m_connection->disconnect();
+                    successCallback(
+                        ::std::ref(m_connection),
+                        ::std::forward<decltype(args)>(args)...
+                    );
                 }
-            } else if (bytesAlreadyRead + length < m_bufferIn.getBodySize()) {
-                this->readBody(bytesAlreadyRead + length);
-            } else {
-                this->transferBufferToInQueue();
-            }
-        }
+            },
+            ::std::placeholders::_1,
+            ::std::placeholders::_2,
+            ::std::forward<decltype(args)>(args)...
+        )
     );
 }
 
@@ -306,6 +544,7 @@ template <
     ::detail::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::transferBufferToInQueue()
 {
-    m_connection->m_owner.pushIncommingMessage(network::OwnedMessage<UserMessageType>{ m_bufferIn, nullptr });
-    this->readHeader();
+    m_connection->m_owner.pushIncommingMessage(
+        network::OwnedMessage<UserMessageType>{ m_bufferIn, m_connection->getPtr() }
+    );
 }

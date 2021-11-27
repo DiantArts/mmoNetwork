@@ -60,6 +60,16 @@ public:
         ::network::Message<UserMessageType> message
     );
 
+    auto hasSendingMessagesAwaiting() const
+        -> bool;
+
+    void sendAwaitingMessages();
+
+
+
+    // ------------------------------------------------------------------ async - in
+
+    void startReceivingMessage();
 
 
     // ------------------------------------------------------------------ other
@@ -79,24 +89,72 @@ private:
 
     // ------------------------------------------------------------------ async - out
 
-    void writeHeader(
-        ::std::size_t bytesAlreadySent = 0
+    template <
+        auto successCallback
+    > void sendMessage(
+        ::network::Message<UserMessageType> message,
+        auto&&... args
     );
 
-    void writeBody(
-        ::std::size_t bytesAlreadySent = 0
+    template <
+        auto successCallback
+    > void sendMessageHeader(
+        ::network::Message<UserMessageType> message,
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
+    );
+
+    template <
+        auto successCallback
+    > void sendMessageBody(
+        ::network::Message<UserMessageType> message,
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
+    );
+
+
+    template <
+        auto successCallback
+    > void sendQueueMessage(
+        auto&&... args
+    );
+
+    template <
+        auto successCallback
+    > void sendQueueMessageHeader(
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
+    );
+
+    template <
+        auto successCallback
+    > void sendQueueMessageBody(
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
     );
 
 
 
     // ------------------------------------------------------------------ async - in
 
-    void readHeader(
-        ::std::size_t bytesAlreadyRead = 0
+    template <
+        auto successCallback
+    > void receiveMessage(
+        auto&&... args
     );
 
-    void readBody(
-        ::std::size_t bytesAlreadyRead = 0
+    template <
+        auto successCallback
+    > void receiveMessageHeader(
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
+    );
+
+    template <
+        auto successCallback
+    > void receiveMessageBody(
+        ::std::size_t bytesAlreadySent,
+        auto&&... args
     );
 
     void transferBufferToInQueue();
@@ -110,6 +168,8 @@ private:
     ::asio::ip::udp::socket m_socket;
     ::network::Message<UserMessageType> m_bufferIn;
     ::detail::Queue<::network::Message<UserMessageType>> m_messagesOut;
+
+    bool m_isSendAllowed{ false };
 
 };
 

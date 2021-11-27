@@ -1,10 +1,10 @@
 #pragma once
 
-#include <sodium.h>
-
-
-
 #if ENABLE_ENCRYPTION
+
+
+
+#include <sodium.h>
 
 
 

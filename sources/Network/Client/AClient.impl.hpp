@@ -159,12 +159,16 @@ template <
         ::network::Message<UserMessageType>::TransmissionProtocol::tcp
     ) {
         switch (message.getTypeAsSystemType()) {
-        case ::network::Message<UserMessageType>::SystemType::ping: connection->tcp.send(message); break;
+        case ::network::Message<UserMessageType>::SystemType::ping:
+            connection->tcp.send(::std::move(message));
+            break;
         default: return false;
         }
     } else {
         switch (message.getTypeAsSystemType()) {
-        case ::network::Message<UserMessageType>::SystemType::ping: connection->udp.send(message); break;
+        case ::network::Message<UserMessageType>::SystemType::ping:
+            connection->udp.send(::std::move(message));
+            break;
         default: return false;
         }
     }
@@ -206,13 +210,7 @@ template <
 
     // start reading/writing tcp
     connection->tcp.startReceivingMessage();
-    if (connection->tcp.hasSendingMessagesAwaiting()) {
-        connection->tcp.sendAwaitingMessages();
-    }
 
     // TODO: udp part
-    // connection->udp.startReceivingMessage();
-    // if (connection->udp.hasSendingMessagesAwaiting()) {
-        // connection->udp.sendAwaitingMessages();
-    // }
+    connection->udp.startReceivingMessage();
 }

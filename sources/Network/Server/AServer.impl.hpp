@@ -141,7 +141,7 @@ template <
 )
 {
     for (auto& client : {clients...}) {
-        client->send(message);
+        client->tcp.send(::network::Message<UserMessageType>{ message });
     }
 }
 
@@ -154,7 +154,7 @@ template <
 {
     for (auto& client : m_connections) {
         if (((client != ignoredClients) && ...)) {
-            client->tcp.send(message);
+            client->tcp.send(::network::Message<UserMessageType>{ message });
         }
     }
 }
@@ -168,7 +168,7 @@ template <
 {
     for (auto& client : m_connections) {
         if (((client.informations.id() != ignoredClientIds) && ...)) {
-            client->send(message);
+            client->tcp.send(::network::Message<UserMessageType>{ message });
         }
     }
 }
@@ -192,12 +192,16 @@ template <
         ::network::Message<UserMessageType>::TransmissionProtocol::tcp
     ) {
         switch (message.getTypeAsSystemType()) {
-        case ::network::Message<UserMessageType>::SystemType::ping: connection->tcp.send(message); break;
+        case ::network::Message<UserMessageType>::SystemType::ping:
+            connection->tcp.send(::std::move(message));
+            break;
         default: return false;
         }
     } else {
         switch (message.getTypeAsSystemType()) {
-        case ::network::Message<UserMessageType>::SystemType::ping: connection->udp.send(message); break;
+        case ::network::Message<UserMessageType>::SystemType::ping:
+            connection->udp.send(::std::move(message));
+            break;
         default: return false;
         }
     }
@@ -255,9 +259,8 @@ template <
     ::std::cout << "[Server:TCP:" << connection->informations.userName << "] onConnectionValidated.\n";
     // start reading/writing tcp
     connection->tcp.startReceivingMessage();
+    connection->udp.startReceivingMessage();
     m_incommingConnections.erase(::std::ranges::find(m_incommingConnections, connection));
-    // TODO: udp
-    // connection->udp.startReceivingMessage();
     m_connections.push_back(::std::move(connection));
 }
 

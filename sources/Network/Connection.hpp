@@ -69,7 +69,7 @@ public:
 
         // TODO: add a ownership to avoid instant dustruction
         if (!ptr->tcp.startConnectingToClient()) {
-            ::std::cerr << "[ERROR:Server] Connection failed.\n";
+            throw ::std::runtime_error("[ERROR:Server] Connection failed.");
         }
 
         return ptr;
