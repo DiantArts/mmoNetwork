@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::udp::Connection<UserMessageType>::Connection(
     ::asio::io_context& asioContext
 )
@@ -16,7 +16,7 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::udp::Connection<UserMessageType>::~Connection()
 {
     this->close();
@@ -27,7 +27,7 @@ template <
 // ------------------------------------------------------------------ async - connection
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::target(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -58,14 +58,14 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::close()
 {
     if (m_socket.is_open()) {
         m_isSendAllowed = false;
         m_socket.cancel();
         m_socket.close();
-        ::std::cout << "[Connection:UDP:" << m_connection->informations.id << "] Connection closed.\n";
+        ::std::cout << "[Connection:UDP:" << m_connection->informations.getId() << "] Connection closed.\n";
     }
     if (m_connection) {
         m_connection.reset();
@@ -73,7 +73,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::udp::Connection<UserMessageType>::isOpen() const
     -> bool
 {
@@ -85,42 +85,83 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::send(
-    UserMessageType messageType,
+    ::network::Message<UserMessageType>::SystemType messageType,
     auto&&... args
 )
 {
-    ::network::Message message{
-        ::std::forward<decltype(messageType)>(messageType),
-        ::std::forward<decltype(args)>(args)...
-    };
     ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<UserMessageType> message
-        )
-        {
+        ) {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
             if (m_isSendAllowed && needsToStartSending) {
                 this->sendAwaitingMessages();
             }
         },
-        ::std::move(message)
+        ::network::Message<UserMessageType>{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        }
     ));;
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::send(
-    ::network::Message<UserMessageType> message
+    UserMessageType messageType,
+    auto&&... args
 )
 {
     ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<UserMessageType> message
-        )
-        {
+        ) {
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
+            m_messagesOut.push_back(::std::move(message));
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
+            }
+        },
+        ::network::Message{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        }
+    ));;
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void ::network::udp::Connection<UserMessageType>::send(
+    const ::network::Message<UserMessageType>& message
+)
+{
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
+        [this](
+            ::network::Message<UserMessageType> message
+        ) {
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
+            m_messagesOut.push_back(::std::move(message));
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
+            }
+        },
+        ::network::Message<UserMessageType>{ message }
+    ));
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void ::network::udp::Connection<UserMessageType>::send(
+    ::network::Message<UserMessageType>&& message
+)
+{
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
+        [this](
+            ::network::Message<UserMessageType> message
+        ) {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
             if (m_isSendAllowed && needsToStartSending) {
@@ -129,18 +170,17 @@ template <
         },
         ::std::move(message)
     ));
-
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > bool ::network::udp::Connection<UserMessageType>::hasSendingMessagesAwaiting() const
 {
     return !m_messagesOut.empty();
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::sendAwaitingMessages()
 {
     this->sendQueueMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -155,7 +195,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::startReceivingMessage()
 {
     this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -169,7 +209,7 @@ template <
 // ------------------------------------------------------------------ other
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::udp::Connection<UserMessageType>::getPort() const
     -> ::std::uint16_t
 {
@@ -177,7 +217,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::udp::Connection<UserMessageType>::getAddress() const
     -> ::std::string
 {
@@ -185,7 +225,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::assignConnection(
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
@@ -198,7 +238,7 @@ template <
 // ------------------------------------------------------------------ async - out
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendMessage(
@@ -210,7 +250,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendMessageHeader(
@@ -225,7 +265,7 @@ template <
             message.getSendingHeaderSize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.id](
+            [this, bytesAlreadySent, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -264,7 +304,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendMessageBody(
@@ -279,7 +319,7 @@ template <
             message.getBodySize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.id](
+            [this, bytesAlreadySent, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -316,7 +356,7 @@ template <
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendQueueMessage(
@@ -327,7 +367,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendQueueMessageHeader(
@@ -341,7 +381,7 @@ template <
             m_messagesOut.front().getSendingHeaderSize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.id](
+            [this, bytesAlreadySent, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -379,7 +419,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::sendQueueMessageBody(
@@ -393,7 +433,7 @@ template <
             m_messagesOut.front().getBodySize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.id](
+            [this, bytesAlreadySent, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -431,7 +471,7 @@ template <
 // ------------------------------------------------------------------ async - in
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::receiveMessage(
@@ -442,7 +482,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::receiveMessageHeader(
@@ -456,7 +496,7 @@ template <
             m_bufferIn.getSendingHeaderSize() - bytesAlreadyRead
         ),
         ::std::bind(
-            [this, bytesAlreadyRead, id = m_connection->informations.id](
+            [this, bytesAlreadyRead, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args
@@ -494,7 +534,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::udp::Connection<UserMessageType>::receiveMessageBody(
@@ -508,7 +548,7 @@ template <
             m_bufferIn.getBodySize() - bytesAlreadyRead
         ),
         ::std::bind(
-            [this, bytesAlreadyRead, id = m_connection->informations.id](
+            [this, bytesAlreadyRead, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args
@@ -541,7 +581,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::udp::Connection<UserMessageType>::transferBufferToInQueue()
 {
     m_connection->m_owner.pushIncommingMessage(

@@ -13,6 +13,15 @@ public:
 
     // ------------------------------------------------------------------ Other
 
+    void commandHelp()
+    {
+        ::std::cout << "h: help\n";
+        ::std::cout << "q: quit\n";
+        ::std::cout << "u: message using UDP instead of TCP\n";
+        ::std::cout << "n: rename\n";
+        ::std::cout << "c: display connected clients" << ::std::endl;
+    }
+
     void messageTcpServer(
         const ::std::string& message
     )
@@ -25,6 +34,22 @@ public:
     )
     {
         this->udpSendToServer(::MessageType::messageAll, message);
+    }
+
+    void rename(
+        const ::std::string& name
+    )
+    {
+        this->setInformation<::network::Informations::Index::name>(name);
+    }
+
+    void displayConnectedClients()
+    {
+        ::std::cout << m_connectedClientsInformations.size() << " clients connected :\n";
+        for (const auto& [clientId, clientInformations] : m_connectedClientsInformations) {
+            ::std::cout << '[' << clientId << "] " << clientInformations.name << ::std::endl;
+        }
+        ::std::cout << ::std::flush;
     }
 
     virtual void onReceive(

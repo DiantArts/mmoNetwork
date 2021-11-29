@@ -10,7 +10,7 @@ namespace network::server {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class AServer
     : public ::network::ANode<UserMessageType>
 {
@@ -45,41 +45,108 @@ public:
 
 
 
-    // ------------------------------------------------------------------ out
+    // ------------------------------------------------------------------ tcpSend
 
-    void send(
+    void tcpSendToClient(
         ::network::Message<UserMessageType>& message,
         ::std::shared_ptr<::network::Connection<UserMessageType>> client
     );
 
-    void send(
+    void tcpSendToClient(
         ::network::Message<UserMessageType>&& message,
         ::std::shared_ptr<::network::Connection<UserMessageType>> client
     );
 
-    void send(
+    void tcpSendToClient(
         ::network::Message<UserMessageType>& message,
         ::detail::Id clientId
     );
 
-    void send(
+    void tcpSendToClient(
         ::network::Message<UserMessageType>&& message,
         ::detail::Id clientId
     );
 
-    void send(
+    void tcpSendToClient(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... clients
+        ::detail::constraint::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... clients
     );
 
-    void sendToAllClients(
-        const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... ignoredClients
+    void tcpSendToAllClients(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
     );
 
-    void sendToAllClients(
+    void tcpSendToAllClients(
+        UserMessageType messageType,
+        auto&&... args
+    );
+
+    void tcpSendToAllClients(
+        const ::network::Message<UserMessageType>& message
+    );
+
+    void tcpSendToAllClients(
         const ::network::Message<UserMessageType>& message,
-        ::detail::sameAs<::detail::Id> auto... ignoredClientIds
+        ::detail::constraint::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... ignoredClients
+    );
+
+    void tcpSendToAllClients(
+        const ::network::Message<UserMessageType>& message,
+        ::detail::constraint::sameAs<::detail::Id> auto... ignoredClientIds
+    );
+
+
+
+    // ------------------------------------------------------------------ udpSend
+
+    void udpSendToClient(
+        ::network::Message<UserMessageType>& message,
+        ::std::shared_ptr<::network::Connection<UserMessageType>> client
+    );
+
+    void udpSendToClient(
+        ::network::Message<UserMessageType>&& message,
+        ::std::shared_ptr<::network::Connection<UserMessageType>> client
+    );
+
+    void udpSendToClient(
+        ::network::Message<UserMessageType>& message,
+        ::detail::Id clientId
+    );
+
+    void udpSendToClient(
+        ::network::Message<UserMessageType>&& message,
+        ::detail::Id clientId
+    );
+
+    void udpSendToClient(
+        const ::network::Message<UserMessageType>& message,
+        ::detail::constraint::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... clients
+    );
+
+    void udpSendToAllClients(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
+    );
+
+    void udpSendToAllClients(
+        UserMessageType messageType,
+        auto&&... args
+    );
+
+    void udpSendToAllClients(
+        const ::network::Message<UserMessageType>& message
+    );
+
+    void udpSendToAllClients(
+        const ::network::Message<UserMessageType>& message,
+        ::detail::constraint::sameAs<::std::shared_ptr<::network::Connection<UserMessageType>>> auto... ignoredClients
+    );
+
+    void udpSendToAllClients(
+        const ::network::Message<UserMessageType>& message,
+        ::detail::constraint::sameAs<::detail::Id> auto... ignoredClientIds
     );
 
 
@@ -120,11 +187,28 @@ public:
 
 
 
-    // ------------------------------------------------------------------ other
+    // ------------------------------------------------------------------ others
 
     [[ nodiscard ]] auto getConnection(
         ::detail::Id id
     ) -> ::std::shared_ptr<::network::Connection<UserMessageType>>;
+
+    [[ nodiscard ]] auto getSharableInformations()
+        -> ::std::map<::detail::Id, ::network::Informations::Sharable>;
+
+    template <
+        ::network::Informations::Index indexValue
+    > void setInformation(
+        ::detail::Id id,
+        auto&&... args
+    );
+
+    template <
+        ::network::Informations::Index indexValue
+    > void setInformation(
+        ::std::shared_ptr<::network::Connection<UserMessageType>> connection,
+        auto&&... args
+    );
 
 
 
@@ -135,6 +219,8 @@ private:
 
     ::std::deque<::std::shared_ptr<::network::Connection<UserMessageType>>> m_incommingConnections;
     ::std::deque<::std::shared_ptr<::network::Connection<UserMessageType>>> m_connections;
+
+    // TODO rooms
     // ::std::vector<::network::server::Room> m_rooms;
 
     ::detail::Id m_idCounter{ 1 };

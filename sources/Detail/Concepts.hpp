@@ -4,13 +4,16 @@ namespace detail { class Id; }
 
 
 
-namespace detail {
-
+namespace detail::constraint {
 
 
 template <
     typename Type
-> concept isEnum = ::std::is_enum<Type>::value;
+> concept hasEnumValueLast = requires(Type){ Type::last; };
+
+template <
+    typename Type
+> concept isEnum = ::std::is_enum<Type>::value && ::detail::constraint::hasEnumValueLast<Type>;
 
 template <
     typename Type1,
@@ -20,8 +23,8 @@ template <
 template <
     typename Type
 > concept isSendableData =
-    !::detail::sameAs<Type, char*> &&
-    (::std::is_trivial<Type>::value || ::detail::sameAs<Type, ::detail::Id>);
+    !::detail::constraint::sameAs<Type, char*> &&
+    (::std::is_trivial<Type>::value || ::detail::constraint::sameAs<Type, ::detail::Id>);
 
 template <
     typename Type
@@ -34,4 +37,4 @@ template <
 
 
 
-} // namespace detail
+} // namespace detail::constraint

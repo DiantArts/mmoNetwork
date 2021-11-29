@@ -9,8 +9,8 @@
 #include <Security/Cipher.hpp>
 #endif
 
-namespace network { template <::detail::isEnum UserMessageType> class ANode; }
-namespace network { template <::detail::isEnum UserMessageType> class Connection; }
+namespace network { template <::detail::constraint::isEnum UserMessageType> class ANode; }
+namespace network { template <::detail::constraint::isEnum UserMessageType> class Connection; }
 
 
 
@@ -22,7 +22,7 @@ namespace network::tcp {
 ///
 ////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class Connection {
 
 public:
@@ -184,8 +184,44 @@ public:
     ///
     ////////////////////////////////////////////////////////////
     void send(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
+    );
+
+    ////////////////////////////////////////////////////////////
+    /// \brief Constructs and sends a message.
+    ///
+    /// Constructs any kind of ::network::Message calling its constructor
+    /// and perfectly forwarding any argument given as parameter.
+    /// Once constructed, the message is asynchronously pushed to the
+    /// queue of outgoing messages.
+    /// If the queue was empty before the push, it then calls
+    /// sendAwaitingMessages().
+    ///
+    /// \param messageType Kind of message descibed in the template-given
+    ///                    struct.
+    /// \param args        Arguments perfectly forwarded to the constructor
+    ///                    of ::network::Message.
+    ///
+    ////////////////////////////////////////////////////////////
+    void send(
         UserMessageType messageType,
         auto&&... args
+    );
+
+    ////////////////////////////////////////////////////////////
+    /// \brief Sends a message.
+    ///
+    /// Asynchronously pushes the to the message into the queue of outgoing
+    /// messages.
+    /// If the queue was empty before the push, it then calls
+    /// sendAwaitingMessages().
+    ///
+    /// \param message Rvalue reference to the message to send.
+    ///
+    ////////////////////////////////////////////////////////////
+    void send(
+        const ::network::Message<UserMessageType>& message
     );
 
     ////////////////////////////////////////////////////////////
@@ -517,7 +553,7 @@ private:
     // of the client supposed to contained a known (TODO) and valid
     // username and password.
     // if the message type is incorrect, it calls ::network::Connection::disconnect().
-    // Else it calls ::network::Connection::setUserName() and
+    // Else it sets the user name and
     // then ::network::ANode::onAuthentification. If it returns false,
     // calls sendAuthentificationDenial() before recursivly call itself
     // till a success (TODO: limit or something).
@@ -632,7 +668,6 @@ private:
 ///
 /// The owner of the class must also possess the following methods
 ///     \arg \c void disconnect();
-///     \arg \c void setUserName(::std::string str);
 ///
 /// The m_owner, m_cipher and informations must be initialised before the udp
 /// member, which mush be initalised before the tcp member.

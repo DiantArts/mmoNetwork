@@ -105,7 +105,6 @@ void ::security::Cipher::encrypt(
     ::std::vector<::std::byte>& data
 ) const
 {
-    ::std::cout << __FUNCTION__ << ::std::endl;
     ::std::vector<::std::byte> dataCpy{ data };
     data.resize(crypto_box_SEALBYTES + dataCpy.size());
     ::crypto_box_seal(
@@ -120,7 +119,6 @@ void ::security::Cipher::decrypt(
     ::std::vector<::std::byte>& data
 ) const
 {
-    ::std::cout << __FUNCTION__ << ::std::endl;
     ::std::vector<::std::byte> decrypted{ data.size() - crypto_box_SEALBYTES };
     if (
         ::crypto_box_seal_open(

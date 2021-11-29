@@ -2,10 +2,451 @@
 
 
 
+// ------------------------------------------------------------------ push imlementation
+
+void push(
+    ::network::Message<auto>& message,
+    const ::detail::constraint::isSendableData auto& data
+)
+{
+    // change size and alloc if needed
+    message.getHeader().bodySize += sizeof(data);
+    message.getBody().resize(message.getHeader().bodySize);
+
+    // push data into the end of the vector
+    ::std::memcpy(message.getBody().data() + message.getHeader().bodySize - sizeof(data), &data, sizeof(data));
+}
+
+void push(
+    ::network::Message<auto>& message,
+    ::detail::constraint::isSendableData auto&& data
+)
+{
+    // change size and alloc if needed
+    message.getHeader().bodySize += sizeof(data);
+    message.getBody().resize(message.getHeader().bodySize);
+
+    // push data into the end of the vector
+    ::std::memmove(message.getBody().data() + message.getHeader().bodySize - sizeof(data), &data, sizeof(data));
+}
+
+
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isSendableData Type
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        // change size and alloc if needed
+        const ::std::size_t memSize{ sizeof(Type) * data.size() };
+        message.getHeader().bodySize += memSize;
+        message.getBody().resize(message.getHeader().bodySize);
+
+        // push data into the end of the vector
+        ::std::memmove(message.getBody().data() + message.getHeader().bodySize - memSize, data.data(), memSize);
+    }
+    ::push<UserMessageType, ::std::uint16_t>(message, data.size());
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isNotSendableData Type
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        for (auto&& elem : data) {
+            push(message, ::std::move(elem));
+        }
+    }
+    ::push<UserMessageType, ::std::uint16_t>(message, data.size());
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isSendableData Type,
+    ::std::size_t size
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type, size> data
+)
+{
+    if (data.size() > 0) {
+        // change size and alloc if needed
+        const ::std::size_t memSize{ sizeof(Type) * size };
+        message.getHeader().bodySize += memSize;
+        message.getBody().resize(message.getHeader().bodySize);
+
+        // push data into the end of the vector
+        ::std::memmove(message.getBody().data() + message.getHeader().bodySize - memSize, data.data(), memSize);
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isNotSendableData Type,
+    ::std::size_t size
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type, size> data
+)
+{
+    if (data.size() > 0) {
+        for (auto&& elem : data) {
+            ::push(message, ::std::move(elem));
+        }
+    }
+}
+
+
+void push(
+    ::network::Message<auto>& message,
+    const ::std::vector<auto>& data
+)
+{
+    auto dataCpy{ data };
+    ::push(message, ::std::span{ dataCpy });
+}
+
+void push(
+    ::network::Message<auto>& message,
+    ::std::vector<auto>&& data
+)
+{
+    ::push(message, ::std::span{ data });
+}
+
+
+
+void push(
+    ::network::Message<auto>& message,
+    const ::std::map<auto, auto>& data
+)
+{
+    if (data.size() > 0) {
+        for (const auto& [key, val] : data) {
+            ::push(message, ::std::make_pair(key, val));
+        }
+    }
+    ::push(message, static_cast<::std::uint16_t>(data.size()));
+}
+
+void push(
+    ::network::Message<auto>& message,
+    ::std::map<auto, auto>&& data
+)
+{
+    if (data.size() > 0) {
+        for (auto&& [key, val] : data) {
+            ::push(message, ::std::make_pair(key, val));
+        }
+    }
+    ::push(message, static_cast<::std::uint16_t>(data.size()));
+}
+
+
+
+void push(
+    ::network::Message<auto>& message,
+    const ::std::unordered_map<auto, auto>& data
+)
+{
+    if (data.size() > 0) {
+        for (const auto& [key, val] : data) {
+            ::push(message, ::std::make_pair(key, val));
+        }
+    }
+    ::push(message, static_cast<::std::uint16_t>(data.size()));
+}
+
+void push(
+    ::network::Message<auto>& message,
+    ::std::unordered_map<auto, auto>&& data
+)
+{
+    if (data.size() > 0) {
+        for (auto&& [key, val] : data) {
+            ::push(message, ::std::make_pair(key, val));
+        }
+    }
+    ::push(message, static_cast<::std::uint16_t>(data.size()));
+}
+
+
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type,
+    ::std::size_t size
+> void push(
+    ::network::Message<UserMessageType>& message,
+    const ::std::array<Type, size>& data
+)
+{
+    auto dataCpy{ data };
+    ::push(message, ::std::span{ dataCpy });
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type,
+    ::std::size_t size
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::array<Type, size>&& data
+)
+{
+    ::push(message, ::std::span{ data });
+}
+
+
+void push(
+    ::network::Message<auto>& message,
+    const ::std::pair<auto, auto>& data
+)
+{
+    ::push(message, data.first);
+    ::push(message, data.second);
+}
+
+void push(
+    ::network::Message<auto>& message,
+    ::std::pair<auto, auto>&& data
+)
+{
+    ::push(message, ::std::move(data.first));
+    ::push(message, ::std::move(data.second));
+}
+
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void push(
+    ::network::Message<UserMessageType>& message,
+    const ::std::string& data
+)
+{
+    ::std::string dataCpy{ data };
+    message.pushRawMemory(dataCpy.data(), dataCpy.size());
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void push(
+    ::network::Message<UserMessageType>& message,
+    ::std::string&& data
+)
+{
+    ::push(message, ::std::span{ data.data(), data.data() + data.size() });
+}
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void push(
+    ::network::Message<UserMessageType>& message,
+    const char* ptrToData
+)
+{
+    ::push(message, ::std::span{ ptrToData, ptrToData + ::std::strlen(ptrToData) });
+}
+
+
+
+
+// ------------------------------------------------------------------ pull implementation
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type
+> [[ nodiscard ]] auto pull(
+    ::network::Message<UserMessageType>& message
+) -> Type
+{
+    Type data;
+    ::pull(message, data);
+    return data;
+}
+
+
+
+void pull(
+    ::network::Message<auto>& message,
+    ::detail::constraint::isSendableData auto& data
+)
+{
+    message.getHeader().bodySize -= sizeof(data);
+
+    // pull data out of the end of the vector
+    ::std::memmove(&data, message.getBody().data() + message.getHeader().bodySize, sizeof(data));
+
+    // resize so he doesn't actually yeet my data
+    message.getBody().resize(message.getHeader().bodySize);
+}
+
+
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isSendableData Type
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        // change size and alloc if needed
+        message.getHeader().bodySize -= sizeof(Type) * data.size();
+
+        // pull data out of the end of the vector
+        ::std::memmove(data.data(), message.getBody().data() + message.getHeader().bodySize, sizeof(Type) * data.size());
+
+        // resize so he doesn't actually yeet my data
+        message.getBody().resize(message.getHeader().bodySize);
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isNotSendableData Type
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type> data
+)
+{
+    if (data.size() > 0) {
+        for (auto& elem : data | ::std::views::reverse) {
+            ::pull(message, elem);
+        }
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isSendableData Type,
+    ::std::size_t size
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type, size> data
+)
+{
+    if constexpr (size > 0) {
+        // change size and alloc if needed
+        message.getHeader().bodySize -= sizeof(Type) * size;
+
+        // pull data out of the end of the vector
+        ::std::memmove(data.data(), message.getBody().data() + message.getHeader().bodySize, sizeof(Type) * size);
+
+        // resize so he doesn't actually yeet my data
+        message.getBody().resize(message.getHeader().bodySize);
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    ::detail::constraint::isNotSendableData Type,
+    ::std::size_t size
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::span<Type, size> data
+)
+{
+    if (data.size() > 0) {
+        for (auto& elem : data | ::std::views::reverse) {
+            ::pull(message, elem);
+        }
+    }
+}
+
+
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::vector<auto>& data
+)
+{
+    auto oldSize{ data.size() };
+    auto pullSize{ ::pull<UserMessageType, ::std::uint16_t>(message) };
+    data.resize(oldSize + pullSize);
+    ::pull(message, ::std::span{ data.begin() + oldSize, pullSize });
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type1,
+    typename Type2
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::map<Type1, Type2>& data
+)
+{
+    auto size{ ::pull<UserMessageType, ::std::uint16_t>(message) };
+    for (::std::uint16_t i{ 0 }; i < size; ++i) {
+        data.insert(::pull<UserMessageType, ::std::pair<Type1, Type2>>(message));
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type1,
+    typename Type2
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::unordered_map<Type1, Type2>& data
+)
+{
+    auto size{ ::pull<UserMessageType, ::std::uint16_t>(message) };
+    for (::std::uint16_t i{ 0 }; i < size; ++i) {
+        data.insert(::pull<UserMessageType, ::std::pair<Type1, Type2>>(message));
+    }
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType,
+    typename Type,
+    ::std::size_t size
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::array<Type, size>& data
+)
+{
+    ::pull(message, ::std::span{ data });
+}
+
+
+
+void pull(
+    ::network::Message<auto>& message,
+    ::std::pair<auto, auto>& data
+)
+{
+    ::pull(message, data.second);
+    ::pull(message, data.first);
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void pull(
+    ::network::Message<UserMessageType>& message,
+    ::std::string& data
+)
+{
+    auto size{ ::pull<UserMessageType, ::std::uint16_t>(message) };
+    data.assign(reinterpret_cast<char*>(message.pullRawMemory(size).data()), size);
+}
+
+
+
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::Message<UserMessageType>::Message() = default;
 
 template <
@@ -22,7 +463,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::Message<UserMessageType>::Message(
     UserMessageType messageType,
     auto&&... args
@@ -35,7 +476,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::Message<UserMessageType>::~Message() = default;
 
 
@@ -43,249 +484,60 @@ template <
 // ------------------------------------------------------------------ push
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::push(
-    const ::detail::isSendableData auto& data
+    const auto& data
 )
 {
-    // change size and alloc if needed
-    m_header.bodySize += sizeof(data);
-    m_body.resize(m_header.bodySize);
-
-    // push data into the end of the vector
-    ::std::memcpy(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
+    ::push(*this, data);
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::push(
-    ::detail::isSendableData auto&& data
+    auto&& data
 )
 {
-    // change size and alloc if needed
-    m_header.bodySize += sizeof(data);
-    m_body.resize(m_header.bodySize);
-
-    // push data into the end of the vector
-    ::std::memmove(m_body.data() + m_header.bodySize - sizeof(data), &data, sizeof(data));
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isSendableData Type
-> void ::network::Message<UserMessageType>::push(
-    ::std::span<Type> data
-)
-{
-    if (data.size() > 0) {
-        // change size and alloc if needed
-        const ::std::size_t memSize{ sizeof(Type) * data.size() };
-        m_header.bodySize += memSize;
-        m_body.resize(m_header.bodySize);
-
-        // push data into the end of the vector
-        ::std::memmove(m_body.data() + m_header.bodySize - memSize, data.data(), memSize);
-    }
-    this->push<::std::uint16_t>(data.size());
+    ::push(*this, ::std::forward<decltype(data)>(data));
 }
 
 template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isNotSendableData Type
-> void ::network::Message<UserMessageType>::push(
-    ::std::span<Type> data
-)
-{
-    if (data.size() > 0) {
-        for (auto&& elem : data) {
-            this->push(::std::move(elem));
-        }
-    }
-    this->push<::std::uint16_t>(data.size());
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isSendableData Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::push(
-    ::std::span<Type, size> data
-)
-{
-    if (data.size() > 0) {
-        // change size and alloc if needed
-        const ::std::size_t memSize{ sizeof(Type) * size };
-        m_header.bodySize += memSize;
-        m_body.resize(m_header.bodySize);
-
-        // push data into the end of the vector
-        ::std::memmove(m_body.data() + m_header.bodySize - memSize, data.data(), memSize);
-    }
-    this->push<::std::uint16_t>(size);
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isNotSendableData Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::push(
-    ::std::span<Type, size> data
-)
-{
-    if (data.size() > 0) {
-        for (auto&& elem : data) {
-            this->push(::std::move(elem));
-        }
-    }
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    const ::std::vector<auto>& data
-)
-{
-    auto dataCpy{ data };
-    this->push(::std::span{ dataCpy });
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    ::std::vector<auto>&& data
-)
-{
-    this->push(::std::span{ data });
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::push(
-    const ::std::array<Type, size>& data
-)
-{
-    auto dataCpy{ data };
-    this->push(::std::span{ dataCpy });
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::push(
-    ::std::array<Type, size>&& data
-)
-{
-    this->push(::std::span{ data });
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    const ::std::pair<auto, auto>& data
-)
-{
-    this->push(data.first);
-    this->push(data.second);
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    ::std::pair<auto, auto>&& data
-)
-{
-    this->push(::std::move(data.first));
-    this->push(::std::move(data.second));
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    const ::std::string& data
-)
-{
-    ::std::string dataCpy{ data };
-    this->pushRawMemory(dataCpy.data(), dataCpy.size());
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    ::std::string&& data
-)
-{
-    this->push(::std::span{ data.data(), data.data() + data.size() });
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::push(
-    const char* ptrToData
-)
-{
-    this->push(::std::span{ ptrToData, ptrToData + ::std::strlen(ptrToData) });
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pushRawMemory(
     auto* ptrToData,
     const ::std::size_t size
 )
 {
-    this->push(::std::span{ ptrToData, ptrToData + size });
+    ::push(*this, ::std::span{ ptrToData, ptrToData + size });
 }
 
-
-
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pushAll(
     auto&&... args
 )
 {
-    (this->push(::std::forward<decltype(args)>(args)), ...);
+    (::push(*this, ::std::forward<decltype(args)>(args)), ...);
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::operator<<(
     auto&& data
 ) -> Message<UserMessageType>&
 {
-    this->push(::std::forward<decltype(data)>(data));
+    ::push(*this, ::std::forward<decltype(data)>(data));
     return *this;
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::operator<<(
     const auto& data
 ) -> Message<UserMessageType>&
 {
     decltype(data) copiedData{ data };
-    this->push(::std::move(copiedData));
+    ::push(*this, ::std::move(copiedData));
     return *this;
 }
 
@@ -294,142 +546,28 @@ template <
 // ------------------------------------------------------------------ pull
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pull(
-    ::detail::isSendableData auto& data
+    auto& data
 )
 {
-    m_header.bodySize -= sizeof(data);
-
-    // pull data out of the end of the vector
-    ::std::memmove(&data, m_body.data() + m_header.bodySize, sizeof(data));
-
-    // resize so he doesn't actually yeet my data
-    m_body.resize(m_header.bodySize);
+    ::pull(*this, data);
 }
 
-
-
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
-    ::detail::isSendableData Type
-> void ::network::Message<UserMessageType>::pull(
-    ::std::span<Type> data
-)
+    typename DataType
+> auto ::network::Message<UserMessageType>::pull()
+    -> DataType
 {
-    if (data.size() > 0) {
-        // change size and alloc if needed
-        m_header.bodySize -= sizeof(Type) * data.size();
-
-        // pull data out of the end of the vector
-        ::std::memmove(data.data(), m_body.data() + m_header.bodySize, sizeof(Type) * data.size());
-
-        // resize so he doesn't actually yeet my data
-        m_body.resize(m_header.bodySize);
-    }
+    DataType data;
+    ::pull(*this, data);
+    return data;
 }
 
 template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isNotSendableData Type
-> void ::network::Message<UserMessageType>::pull(
-    ::std::span<Type> data
-)
-{
-    if (data.size() > 0) {
-        for (auto& elem : data | ::std::views::reverse) {
-            this->pull(elem);
-        }
-    }
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isSendableData Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::pull(
-    ::std::span<Type, size> data
-)
-{
-    if constexpr (size > 0) {
-        // change size and alloc if needed
-        m_header.bodySize -= sizeof(Type) * size;
-
-        // pull data out of the end of the vector
-        ::std::memmove(data.data(), m_body.data() + m_header.bodySize, sizeof(Type) * size);
-
-        // resize so he doesn't actually yeet my data
-        m_body.resize(m_header.bodySize);
-    }
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    ::detail::isNotSendableData Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::pull(
-    ::std::span<Type, size> data
-)
-{
-    if (data.size() > 0) {
-        for (auto& elem : data | ::std::views::reverse) {
-            this->pull(elem);
-        }
-    }
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::pull(
-    ::std::vector<auto>& data
-)
-{
-    data.resize(this->pull<::std::uint16_t>());
-    this->pull(::std::span{ data });
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename Type,
-    ::std::size_t size
-> void ::network::Message<UserMessageType>::pull(
-    ::std::array<Type, size>& data
-)
-{
-    this->pull(::std::span{ data });
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::pull(
-    ::std::pair<auto, auto>& data
-)
-{
-    this->pull(data.second);
-    this->pull(data.first);
-}
-
-template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::pull(
-    ::std::string& data
-)
-{
-    auto size{ this->pull<::std::uint16_t>() };
-    data.assign(reinterpret_cast<char*>(this->pullRawMemory(size).data()), size);
-}
-
-
-
-template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::pullRawMemory(
     ::std::vector<::std::byte>& refToData,
     const ::std::size_t size
@@ -448,7 +586,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::pullRawMemory(
     const ::std::size_t size
 ) -> ::std::vector<::std::byte>
@@ -458,27 +596,13 @@ template <
     return data;
 }
 
-
-
 template <
-    ::detail::isEnum UserMessageType
-> template <
-    typename DataType
-> auto ::network::Message<UserMessageType>::pull()
-    -> DataType
-{
-    DataType data;
-    this->pull(data);
-    return data;
-}
-
-template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::operator>>(
     auto& data
 ) -> Message<UserMessageType>&
 {
-    this->pull(data);
+    ::pull(*this, data);
     return *this;
 }
 
@@ -487,7 +611,7 @@ template <
 // ------------------------------------------------------------------ informations
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > constexpr auto ::network::Message<UserMessageType>::getHeaderSize()
     -> ::std::size_t
 {
@@ -495,7 +619,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > constexpr auto ::network::Message<UserMessageType>::getSendingHeaderSize()
     -> ::std::size_t
 {
@@ -503,7 +627,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getBodySize() const
     -> ::std::size_t
 {
@@ -511,7 +635,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getSize() const
     -> ::std::size_t
 {
@@ -519,7 +643,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::isBodyEmpty() const
     -> bool
 {
@@ -527,7 +651,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getHeaderAddr()
     -> void*
 {
@@ -535,7 +659,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getType() const
     -> UserMessageType
 {
@@ -543,7 +667,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getTypeAsSystemType() const
     -> Message<UserMessageType>::SystemType
 {
@@ -551,7 +675,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getTypeAsInt() const
     -> ::std::uint16_t
 {
@@ -559,7 +683,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::setType(
     UserMessageType type
 )
@@ -568,7 +692,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getTransmissionProtocol()
     -> Message<UserMessageType>::TransmissionProtocol
 {
@@ -576,7 +700,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::setTransmissionProtocol(
     Message<UserMessageType>::TransmissionProtocol protocol
 )
@@ -589,14 +713,14 @@ template <
 // ------------------------------------------------------------------ bodyManipulation
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::updateBodySize()
 {
     m_body.resize(m_header.bodySize);
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::Message<UserMessageType>::resize(
     ::std::size_t newSize
 )
@@ -605,7 +729,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::Message<UserMessageType>::getBodyAddr()
     -> void*
 {
@@ -614,25 +738,36 @@ template <
 
 
 
-// ------------------------------------------------------------------ debug
+// ------------------------------------------------------------------ getters
 
 template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::displayHeader(
-    const char direction[2]
-) const
+    ::detail::constraint::isEnum UserMessageType
+> auto ::network::Message<UserMessageType>::getHeader() const
+    -> const Message<UserMessageType>::Header&
 {
-    ::std::cout << direction << ' '
-        << (int)m_header.packetType << ' '
-        << (int)m_header.bodySize << '\n';
+    return m_header;
 }
 
 template <
-    ::detail::isEnum UserMessageType
-> void ::network::Message<UserMessageType>::displayBody(
-    const char direction[2]
-) const
+    ::detail::constraint::isEnum UserMessageType
+> auto ::network::Message<UserMessageType>::getHeader()
+    -> Message<UserMessageType>::Header&
 {
-    ::std::cout << direction << " [body]\n";
-    ::std::cout.write((char*)m_body.data(), m_header.bodySize);
+    return m_header;
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> auto ::network::Message<UserMessageType>::getBody() const
+    -> const ::std::vector<::std::byte>&
+{
+    return m_body;
+}
+
+template <
+    ::detail::constraint::isEnum UserMessageType
+> auto ::network::Message<UserMessageType>::getBody()
+    -> ::std::vector<::std::byte>&
+{
+    return m_body;
 }

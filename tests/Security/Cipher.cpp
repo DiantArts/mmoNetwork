@@ -2,7 +2,7 @@
 #include <Security/Cipher.hpp>
 #include <Network/Message.hpp>
 
-enum class Enum{ nothing };
+enum class Enum{ last };
 
 
 

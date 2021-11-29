@@ -71,7 +71,7 @@ MOD_BUILDDIR	:=	$(addsuffix /debug,$(BUILDDIR))
 
 
 # ============================================================================= Mode valgrind
-else ifeq (auto_valgrind,$(findstring auto_valgrind,$(MAKECMDGOALS)))
+else ifeq (valgrind,$(findstring valgrind,$(MAKECMDGOALS)))
 
 MODE_EXT		:=	_valgrind
 MODE_FLAGS		:=	-g3 -Og -pipe -DDEBUG=1
@@ -253,6 +253,8 @@ endif
 ## ============================================================================
 
 all: linkage1 linkage2
+
+valgrind: linkage1 linkage2
 
 precompilation : $(C_PCH_OBJ) $(CPP_PCH_OBJ)
 	$(PRINTF) "$(LCYAN)[Precompilation]$(NORMAL) done\n"

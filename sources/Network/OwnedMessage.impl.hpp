@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------ *structors
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::OwnedMessage<UserMessageType>::OwnedMessage(
     ::network::Message<UserMessageType> message,
     ::std::shared_ptr<::network::Connection<UserMessageType>> remote
@@ -13,7 +13,7 @@ template <
 {}
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::OwnedMessage<UserMessageType>::~OwnedMessage() = default;
 
 
@@ -21,7 +21,7 @@ template <
 // ------------------------------------------------------------------ informations
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::OwnedMessage<UserMessageType>::getRemote()
     -> ::std::shared_ptr<::network::Connection<UserMessageType>>
 {

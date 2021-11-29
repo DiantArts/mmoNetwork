@@ -9,8 +9,8 @@
 #include <Security/Cipher.hpp>
 #endif
 
-namespace network { template <::detail::isEnum UserMessageType> class ANode; }
-namespace network { template <::detail::isEnum UserMessageType> class Connection; }
+namespace network { template <::detail::constraint::isEnum UserMessageType> class ANode; }
+namespace network { template <::detail::constraint::isEnum UserMessageType> class Connection; }
 
 
 
@@ -19,7 +19,7 @@ namespace network::udp {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class Connection {
 
 public:
@@ -52,12 +52,21 @@ public:
     // ------------------------------------------------------------------ async - out
 
     void send(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
+    );
+
+    void send(
         UserMessageType messageType,
         auto&&... args
     );
 
     void send(
-        ::network::Message<UserMessageType> message
+        const ::network::Message<UserMessageType>& message
+    );
+
+    void send(
+        ::network::Message<UserMessageType>&& message
     );
 
     auto hasSendingMessagesAwaiting() const

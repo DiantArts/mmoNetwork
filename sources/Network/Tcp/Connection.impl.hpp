@@ -9,7 +9,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::tcp::Connection<UserMessageType>::Connection(
     ::asio::ip::tcp::socket socket
 )
@@ -22,7 +22,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > ::network::tcp::Connection<UserMessageType>::~Connection()
 {
     this->disconnect();
@@ -39,7 +39,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::startConnectingToClient()
     -> bool
 {
@@ -67,7 +67,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::startConnectingToServer(
     const ::std::string& host,
     const ::std::uint16_t port
@@ -107,7 +107,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::disconnect()
 {
     if (this->isConnected()) {
@@ -115,7 +115,7 @@ template <
         m_socket.close();
         this->notify();
         m_connection->m_owner.onDisconnect(m_connection->getPtr());
-        ::std::cout << "[Connection:TCP:" << m_connection->informations.id << "] Disconnected.\n";
+        ::std::cout << "[Connection:TCP:" << m_connection->informations.getId() << "] Disconnected.\n";
     }
     if (m_connection) {
         m_connection.reset();
@@ -126,7 +126,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::isConnected() const
     -> bool
 {
@@ -137,7 +137,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::notify()
 {
     m_blocker.notify_all();
@@ -147,7 +147,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::waitNotification()
 {
     ::std::unique_lock locker{ m_mutex };
@@ -165,28 +165,51 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::send(
-    UserMessageType messageType,
+    ::network::Message<UserMessageType>::SystemType messageType,
     auto&&... args
 )
 {
-    ::network::Message message{
-        ::std::forward<decltype(messageType)>(messageType),
-        ::std::forward<decltype(args)>(args)...
-    };
     ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<UserMessageType> message
-        )
-        {
+        ) {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
             if (m_isSendAllowed && needsToStartSending) {
                 this->sendAwaitingMessages();
             }
         },
-        ::std::move(message)
+        ::network::Message<UserMessageType>{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        }
+    ));;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+template <
+    ::detail::constraint::isEnum UserMessageType
+> void ::network::tcp::Connection<UserMessageType>::send(
+    UserMessageType messageType,
+    auto&&... args
+)
+{
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
+        [this](
+            ::network::Message<UserMessageType> message
+        ) {
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
+            m_messagesOut.push_back(::std::move(message));
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
+            }
+        },
+        ::network::Message{
+            ::std::forward<decltype(messageType)>(messageType),
+            ::std::forward<decltype(args)>(args)...
+        }
     ));;
 }
 
@@ -194,7 +217,30 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
+> void ::network::tcp::Connection<UserMessageType>::send(
+    const ::network::Message<UserMessageType>& message
+)
+{
+    ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
+        [this](
+            ::network::Message<UserMessageType> message
+        ) {
+            auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
+            m_messagesOut.push_back(::std::move(message));
+            if (m_isSendAllowed && needsToStartSending) {
+                this->sendAwaitingMessages();
+            }
+        },
+        ::network::Message<UserMessageType>{ message }
+    ));
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+template <
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::send(
     ::network::Message<UserMessageType>&& message
 )
@@ -202,8 +248,7 @@ template <
     ::asio::post(m_connection->m_owner.getAsioContext(), ::std::bind_front(
         [this](
             ::network::Message<UserMessageType> message
-        )
-        {
+        ) {
             auto needsToStartSending{ !this->hasSendingMessagesAwaiting() };
             m_messagesOut.push_back(::std::move(message));
             if (m_isSendAllowed && needsToStartSending) {
@@ -218,7 +263,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > bool ::network::tcp::Connection<UserMessageType>::hasSendingMessagesAwaiting() const
 {
     return !m_messagesOut.empty();
@@ -228,7 +273,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendAwaitingMessages()
 {
     this->sendQueueMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -249,7 +294,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::startReceivingMessage()
 {
     this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -269,7 +314,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getPort() const
     -> ::std::uint16_t
 {
@@ -280,7 +325,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > auto ::network::tcp::Connection<UserMessageType>::getAddress() const
     -> ::std::string
 {
@@ -291,7 +336,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::assignConnection(
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
@@ -310,7 +355,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::tcp::Connection<UserMessageType>::sendMessage(
@@ -322,7 +367,7 @@ template <
         m_socket,
         ::asio::buffer(message.getHeaderAddr(), message.getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.id](
+            [this, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -345,7 +390,7 @@ template <
                             m_socket,
                             ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.id](
+                                [this, id = m_connection->informations.getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length [[ maybe_unused ]],
                                     ::network::Message<UserMessageType> message,
@@ -394,7 +439,7 @@ template <
 }
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::tcp::Connection<UserMessageType>::sendQueueMessage(
@@ -405,7 +450,7 @@ template <
         m_socket,
         ::asio::buffer(m_messagesOut.front().getHeaderAddr(), m_messagesOut.front().getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.id](
+            [this, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -427,7 +472,7 @@ template <
                             m_socket,
                             ::asio::buffer(m_messagesOut.front().getBodyAddr(), m_messagesOut.front().getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.id](
+                                [this, id = m_connection->informations.getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length [[ maybe_unused ]],
                                     auto&&... args
@@ -485,7 +530,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > template <
     auto successCallback
 > void ::network::tcp::Connection<UserMessageType>::receiveMessage(
@@ -496,7 +541,7 @@ template <
         m_socket,
         ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.id](
+            [this, id = m_connection->informations.getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args
@@ -519,7 +564,7 @@ template <
                             m_socket,
                             ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.id](
+                                [this, id = m_connection->informations.getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length,
                                     auto&&... args
@@ -568,7 +613,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::transferBufferToInQueue()
 {
     m_connection->m_owner.pushIncommingMessage(
@@ -592,7 +637,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::identification()
 {
 #ifdef ENABLE_ENCRYPTION
@@ -607,7 +652,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::publicKey
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Identification failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Identification failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
@@ -627,7 +672,7 @@ template <
     } else {
         this->clientWaitIdentificationAcceptation();
     }
-    ::std::cerr << "[Connection:TCP:" << m_connection->informations.id << "] Identification ignored.\n";
+    ::std::cerr << "[Connection:TCP:" << m_connection->informations.getId() << "] Identification ignored.\n";
 
 #endif // ENABLE_ENCRYPTION
 }
@@ -640,7 +685,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverHandshake()
 {
     auto baseValue{ m_connection->m_cipher.generateRandomData(1024) };
@@ -660,14 +705,14 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::resolveHandshake
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Handshake failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Handshake failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
             auto receivedValue{ connection->tcp.m_bufferIn.template pull<::std::vector<::std::byte>>() };
             // connection->m_cipher.decrypt(receivedValue);
             if (receivedValue != baseValue) {
-                ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id
+                ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId()
                     << "] Handshake failed, incorrect value\n";
                 connection->m_owner.onIdentificationDenial(connection);
                 connection->tcp.sendIdentificationDenial();
@@ -678,7 +723,7 @@ template <
                 connection->disconnect();
             } else {
                 connection->tcp.serverAcceptIdentification();
-                ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] Identification successful.\n";
+                ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Identification successful.\n";
             }
         }
     }>(::std::move(baseValue));
@@ -688,7 +733,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientHandshake()
 {
     this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -696,7 +741,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::proposeHandshake
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Handshake failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Handshake failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
@@ -726,13 +771,13 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendIdentificationDenial()
 {
     this->sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
         connection->disconnect();
     }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationDenied, m_connection->informations.id
+        ::network::Message<UserMessageType>::SystemType::identificationDenied, m_connection->informations.getId()
     });
 }
 
@@ -744,7 +789,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverAcceptIdentification()
 {
 
@@ -752,7 +797,7 @@ template <
         connection->tcp.serverAuthentification();
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::identificationAccepted,
-        m_connection->informations.id
+        m_connection->informations.getId()
     });
 }
 
@@ -760,7 +805,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientWaitIdentificationAcceptation()
 {
     this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -774,13 +819,13 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::identificationAccepted
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.id << "] Identification acceptance failed"
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Identification acceptance failed"
                 << ", unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
-            connection->tcp.m_bufferIn.pull(connection->informations.id);
+            connection->informations.setId(connection->tcp.m_bufferIn.template pull<::detail::Id>());
 #ifdef ENABLE_ENCRYPTION
-            ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] Identification successful.\n";
+            ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Identification successful.\n";
 #endif // ENABLE_ENCRYPTION
             connection->tcp.clientAuthentification();
         }
@@ -802,7 +847,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::serverAuthentification()
 {
     this->receiveMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
@@ -810,16 +855,16 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::authentification
         ) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.id << "] Authentification failed, "
+            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Authentification failed, "
                 << "unexpected message received.\n";
             return connection->disconnect();
         }
 
         auto password{ connection->tcp.m_bufferIn.template pull<::std::string>() };
-        connection->setUserName(connection->tcp.m_bufferIn.template pull<::std::string>());
+        connection->informations.setName(connection->tcp.m_bufferIn.template pull<::std::string>());
 
         if (!connection->m_owner.onAuthentification(connection)) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.id << "] Authentification failed, "
+            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Authentification failed, "
                 << "onAuthentification returned false.\n";
             connection->m_owner.onAuthentificationDenial(connection);
             connection->tcp.sendAuthentificationDenial();
@@ -827,7 +872,7 @@ template <
         }
 
         connection->tcp.template sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
-            ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] Authentification successful.\n";
+            ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Authentification successful.\n";
             connection->tcp.setupUdp();
         }>(::network::Message<UserMessageType>{
             ::network::Message<UserMessageType>::SystemType::authentificationAccepted
@@ -840,7 +885,7 @@ template <
 ///////////////////////////////////////////////////////////////////////////////
 // TODO: mem error when closing the client after authentification denial
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::clientAuthentification()
 {
     m_connection->m_owner.onAuthentification(m_connection);
@@ -856,7 +901,7 @@ template <
                 connection->tcp.m_bufferIn.getTypeAsSystemType() !=
                 ::network::Message<UserMessageType>::SystemType::authentificationAccepted
             ) {
-                ::std::cerr << "[Connection:TCP:" << connection->informations.id << "] invalid authentification acceptance\n";
+                ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] invalid authentification acceptance\n";
                 connection->disconnect();
             } else {
                 connection->tcp.setupUdp();
@@ -864,7 +909,7 @@ template <
         }>();
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::authentification,
-        m_connection->informations.userName,
+        m_connection->informations.getName(),
         "password"s
     });
 }
@@ -872,7 +917,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::sendAuthentificationDenial()
 {
     this->sendMessage<[](...){}>(::network::Message<UserMessageType>{
@@ -891,7 +936,7 @@ template <
 
 ///////////////////////////////////////////////////////////////////////////////
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > void ::network::tcp::Connection<UserMessageType>::setupUdp()
 {
     // send udp informations
@@ -906,7 +951,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::udpInformations
         ) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.id << "] Failed to setup Udp, "
+            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Failed to setup Udp, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {

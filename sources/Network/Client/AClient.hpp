@@ -10,7 +10,7 @@ namespace network::client {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class AClient
     : public ::network::ANode<UserMessageType>
 {
@@ -55,48 +55,44 @@ public:
     // ------------------------------------------------------------------ tcp
 
     void tcpSendToServer(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
+    );
+
+    void tcpSendToServer(
+        UserMessageType messageType,
+        auto&&... args
+    );
+
+    void tcpSendToServer(
         ::network::Message<UserMessageType>& message
     );
 
     void tcpSendToServer(
         ::network::Message<UserMessageType>&& message
     );
-
-    // construct and send
-    void tcpSendToServer(
-        UserMessageType messageType,
-        auto&&... args
-    )
-    {
-        m_connectionToServer->tcp.send(
-            ::std::forward<decltype(messageType)>(messageType),
-            ::std::forward<decltype(args)>(args)...
-        );
-    }
 
 
 
     // ------------------------------------------------------------------ udp
 
     void udpSendToServer(
+        ::network::Message<UserMessageType>::SystemType messageType,
+        auto&&... args
+    );
+
+    void udpSendToServer(
+        UserMessageType messageType,
+        auto&&... args
+    );
+
+    void udpSendToServer(
         ::network::Message<UserMessageType>& message
     );
 
     void udpSendToServer(
         ::network::Message<UserMessageType>&& message
     );
-
-    // construct and send
-    void udpSendToServer(
-        UserMessageType messageType,
-        auto&&... args
-    )
-    {
-        m_connectionToServer->udp.send(
-            ::std::forward<decltype(messageType)>(messageType),
-            ::std::forward<decltype(args)>(args)...
-        );
-    }
 
 
 
@@ -128,9 +124,28 @@ public:
 
 
 
+    // ------------------------------------------------------------------ others
+
+    template <
+        ::network::Informations::Index indexValue
+    > void setInformation(
+        ::detail::Id id,
+        auto&&... args
+    );
+
+    template <
+        ::network::Informations::Index indexValue
+    > void setInformation(
+        auto&&... args
+    );
+
+
+
 protected:
 
     ::std::shared_ptr<::network::Connection<UserMessageType>> m_connectionToServer;
+
+    ::std::map<::detail::Id, ::network::Informations::Sharable> m_connectedClientsInformations;
 
 };
 

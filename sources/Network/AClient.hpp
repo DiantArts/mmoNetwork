@@ -6,6 +6,6 @@
 
 namespace network {
     template <
-        ::detail::isEnum UserMessageType
+        ::detail::constraint::isEnum UserMessageType
     > using AClient = ::network::client::AClient<UserMessageType>;
 }

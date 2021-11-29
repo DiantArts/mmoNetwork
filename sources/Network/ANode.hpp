@@ -10,7 +10,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class ANode {
 
 public:

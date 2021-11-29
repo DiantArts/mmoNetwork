@@ -2,7 +2,7 @@
 #include <Network/Message.hpp>
 #include <Detail/Id.hpp>
 
-enum class Enum{ nothing };
+enum class Enum{ last };
 
 
 
@@ -12,9 +12,9 @@ BOOST_AUTO_TEST_SUITE(Network)
 BOOST_AUTO_TEST_CASE(Constructors)
 {
     ::network::Message<Enum> msg1;
-    ::network::Message<Enum> msg2{ ::Enum::nothing };
-    ::network::Message<Enum> msg3{ ::Enum::nothing, ::std::string{ "hello" } };
-    ::network::Message<Enum> msg4{ ::Enum::nothing, int{ 3 }, ::std::string{ "hello" }, float{ 50 } };
+    ::network::Message<Enum> msg2{ ::Enum::last };
+    ::network::Message<Enum> msg3{ ::Enum::last, ::std::string{ "hello" } };
+    ::network::Message<Enum> msg4{ ::Enum::last, int{ 3 }, ::std::string{ "hello" }, float{ 50 } };
     BOOST_TEST(msg3.pull<::std::string>() == ::std::string{ "hello" });
     BOOST_TEST(msg4.pull<float>() == float{ 50 });
     BOOST_TEST(msg4.pull<::std::string>() == ::std::string{ "hello" });
@@ -102,36 +102,85 @@ BOOST_AUTO_TEST_CASE(MultipleTypes)
     ::std::pair<int, float> d{ 1, 5.4 }, l;
     ::detail::Id e{ 3 }, m;
     ::std::string f{ "hello" }, n;
-    ::std::vector<int> g{ 1, 2, 3, 4, 5, 6 }, o;
-    ::std::vector<::std::string> h{ "1", "2", "3", "4", "5", "6" }, p;
-    ::std::array<::std::string, 4> q{ "1", "hello", "blb" }, r;
+
     msg.push(a);
     msg.push(b);
     msg.push(c);
     msg.push(d);
     msg.push(e);
     msg.push(f);
-    msg.push(g);
-    msg.push(h);
-    msg.push(q);
-    msg.pull(r);
-    msg.pull(p);
-    msg.pull(o);
+
     msg.pull(n);
     msg.pull(m);
     msg.pull(l);
     msg.pull(k);
     msg.pull(j);
     msg.pull(i);
+
     BOOST_TEST(a == i);
     BOOST_TEST(b == j);
     BOOST_TEST(c == k);
     BOOST_TEST((d.first == l.first && d.second == l.second));
     BOOST_TEST(e == m);
     BOOST_TEST(f == n);
-    BOOST_TEST(g == o);
-    BOOST_TEST(h == p);
-    BOOST_TEST(q == r);
+
+}
+
+BOOST_AUTO_TEST_CASE(StdContainers)
+{
+    ::network::Message<Enum> msg;
+    ::std::vector<int> a{ 1, 2, 3, 4, 5, 6 }, b;
+    ::std::vector<::std::string> c{ "1", "2", "3", "4", "5", "6" }, d;
+    ::std::array<::std::string, 4> e{ "1", "2", "3", "4" }, f;
+    ::std::map<int, ::std::string> g{ {1, "1"}, {2, "2"}, {3, "3"} }, h;
+    ::std::unordered_map<int, ::std::string> i{ {1, "1"}, {2, "2"}, {3, "3"} }, j;
+
+    msg.push(a);
+    msg.push(c);
+    msg.push(e);
+    msg.push(g);
+    msg.push(i);
+
+    msg.pull(j);
+    msg.pull(h);
+    msg.pull(f);
+    msg.pull(d);
+    msg.pull(b);
+
+    BOOST_TEST(a == b);
+    BOOST_TEST(c == d);
+    BOOST_TEST(e == f);
+    BOOST_TEST(g == h);
+    BOOST_TEST(i == j);
+}
+
+BOOST_AUTO_TEST_CASE(ModifiedStdContainers)
+{
+    ::network::Message<Enum> msg;
+    ::std::vector<int> a{ 1, 2, 3, 4, 5, 6 }, b;
+    ::std::vector<::std::string> c{ "1", "2", "3", "4", "5", "6" }, d;
+    ::std::map<int, ::std::string> g{ {1, "1"}, {2, "2"}, {3, "3"} }, h;
+    ::std::unordered_map<int, ::std::string> i{ {1, "1"}, {2, "2"}, {3, "3"} }, j;
+
+    msg.push(a);
+    msg.push(c);
+    msg.push(g);
+    msg.push(i);
+
+    a.insert(a.begin(), 1, 0);
+    b.push_back(0);
+    c.insert(c.begin(), 1, "0");
+    d.push_back("0");
+
+    msg.pull(j);
+    msg.pull(h);
+    msg.pull(d);
+    msg.pull(b);
+
+    BOOST_TEST(a == b);
+    BOOST_TEST(c == d);
+    BOOST_TEST(g == h);
+    BOOST_TEST(i == j);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

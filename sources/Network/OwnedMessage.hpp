@@ -4,7 +4,7 @@
 
 
 
-namespace network { template <::detail::isEnum UserMessageType> class Connection; }
+namespace network { template <::detail::constraint::isEnum UserMessageType> class Connection; }
 
 
 
@@ -13,7 +13,7 @@ namespace network {
 
 
 template <
-    ::detail::isEnum UserMessageType
+    ::detail::constraint::isEnum UserMessageType
 > class OwnedMessage
     : public ::network::Message<UserMessageType>
 {
