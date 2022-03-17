@@ -115,7 +115,7 @@ template <
         m_socket.close();
         this->notify();
         m_connection->m_owner.onDisconnect(m_connection->getPtr());
-        ::std::cout << "[Connection:TCP:" << m_connection->informations.getId() << "] Disconnected.\n";
+        ::std::cout << "[Connection:TCP:" << m_connection->getId() << "] Disconnected.\n";
     }
     if (m_connection) {
         m_connection.reset();
@@ -367,7 +367,7 @@ template <
         m_socket,
         ::asio::buffer(message.getHeaderAddr(), message.getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.getId()](
+            [this, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -390,7 +390,7 @@ template <
                             m_socket,
                             ::asio::buffer(message.getBodyAddr(), message.getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.getId()](
+                                [this, id = m_connection->getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length [[ maybe_unused ]],
                                     ::network::Message<UserMessageType> message,
@@ -450,7 +450,7 @@ template <
         m_socket,
         ::asio::buffer(m_messagesOut.front().getHeaderAddr(), m_messagesOut.front().getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.getId()](
+            [this, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -472,7 +472,7 @@ template <
                             m_socket,
                             ::asio::buffer(m_messagesOut.front().getBodyAddr(), m_messagesOut.front().getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.getId()](
+                                [this, id = m_connection->getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length [[ maybe_unused ]],
                                     auto&&... args
@@ -541,7 +541,7 @@ template <
         m_socket,
         ::asio::buffer(m_bufferIn.getHeaderAddr(), m_bufferIn.getSendingHeaderSize()),
         ::std::bind(
-            [this, id = m_connection->informations.getId()](
+            [this, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args
@@ -564,7 +564,7 @@ template <
                             m_socket,
                             ::asio::buffer(m_bufferIn.getBodyAddr(), m_bufferIn.getBodySize()),
                             ::std::bind(
-                                [this, id = m_connection->informations.getId()](
+                                [this, id = m_connection->getId()](
                                     const ::std::error_code& errorCode,
                                     const ::std::size_t length,
                                     auto&&... args
@@ -652,7 +652,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::publicKey
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Identification failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->getId() << "] Identification failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
@@ -672,7 +672,7 @@ template <
     } else {
         this->clientWaitIdentificationAcceptation();
     }
-    ::std::cerr << "[Connection:TCP:" << m_connection->informations.getId() << "] Identification ignored.\n";
+    ::std::cerr << "[Connection:TCP:" << m_connection->getId() << "] Identification ignored.\n";
 
 #endif // ENABLE_ENCRYPTION
 }
@@ -705,14 +705,14 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::resolveHandshake
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Handshake failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->getId() << "] Handshake failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
             auto receivedValue{ connection->tcp.m_bufferIn.template pull<::std::vector<::std::byte>>() };
             // connection->m_cipher.decrypt(receivedValue);
             if (receivedValue != baseValue) {
-                ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId()
+                ::std::cerr << "[ERROR:Identification:TCP:" << connection->getId()
                     << "] Handshake failed, incorrect value\n";
                 connection->m_owner.onIdentificationDenial(connection);
                 connection->tcp.sendIdentificationDenial();
@@ -723,7 +723,7 @@ template <
                 connection->disconnect();
             } else {
                 connection->tcp.serverAcceptIdentification();
-                ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Identification successful.\n";
+                ::std::cerr << "[Connection:TCP:" << connection->getId() << "] Identification successful.\n";
             }
         }
     }>(::std::move(baseValue));
@@ -741,7 +741,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::proposeHandshake
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Handshake failed, "
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->getId() << "] Handshake failed, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
@@ -777,7 +777,7 @@ template <
     this->sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
         connection->disconnect();
     }>(::network::Message<UserMessageType>{
-        ::network::Message<UserMessageType>::SystemType::identificationDenied, m_connection->informations.getId()
+        ::network::Message<UserMessageType>::SystemType::identificationDenied, m_connection->getId()
     });
 }
 
@@ -797,7 +797,7 @@ template <
         connection->tcp.serverAuthentification();
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::identificationAccepted,
-        m_connection->informations.getId()
+        m_connection->getId()
     });
 }
 
@@ -819,13 +819,13 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::identificationAccepted
         ) {
-            ::std::cerr << "[ERROR:Identification:TCP:" << connection->informations.getId() << "] Identification acceptance failed"
+            ::std::cerr << "[ERROR:Identification:TCP:" << connection->getId() << "] Identification acceptance failed"
                 << ", unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {
-            connection->informations.setId(connection->tcp.m_bufferIn.template pull<::detail::Id>());
+            connection->setId(connection->tcp.m_bufferIn.template pull<::detail::Id>());
 #ifdef ENABLE_ENCRYPTION
-            ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Identification successful.\n";
+            ::std::cerr << "[Connection:TCP:" << connection->getId() << "] Identification successful.\n";
 #endif // ENABLE_ENCRYPTION
             connection->tcp.clientAuthentification();
         }
@@ -855,16 +855,16 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::authentification
         ) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Authentification failed, "
+            ::std::cerr << "[ERROR:TCP:" << connection->getId() << "] Authentification failed, "
                 << "unexpected message received.\n";
             return connection->disconnect();
         }
 
         auto password{ connection->tcp.m_bufferIn.template pull<::std::string>() };
-        connection->informations.setName(connection->tcp.m_bufferIn.template pull<::std::string>());
+        connection->setName(connection->tcp.m_bufferIn.template pull<::std::string>());
 
         if (!connection->m_owner.onAuthentification(connection)) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Authentification failed, "
+            ::std::cerr << "[ERROR:TCP:" << connection->getId() << "] Authentification failed, "
                 << "onAuthentification returned false.\n";
             connection->m_owner.onAuthentificationDenial(connection);
             connection->tcp.sendAuthentificationDenial();
@@ -872,7 +872,7 @@ template <
         }
 
         connection->tcp.template sendMessage<[](::std::shared_ptr<::network::Connection<UserMessageType>> connection){
-            ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] Authentification successful.\n";
+            ::std::cerr << "[Connection:TCP:" << connection->getId() << "] Authentification successful.\n";
             connection->tcp.setupUdp();
         }>(::network::Message<UserMessageType>{
             ::network::Message<UserMessageType>::SystemType::authentificationAccepted
@@ -901,7 +901,7 @@ template <
                 connection->tcp.m_bufferIn.getTypeAsSystemType() !=
                 ::network::Message<UserMessageType>::SystemType::authentificationAccepted
             ) {
-                ::std::cerr << "[Connection:TCP:" << connection->informations.getId() << "] invalid authentification acceptance\n";
+                ::std::cerr << "[Connection:TCP:" << connection->getId() << "] invalid authentification acceptance\n";
                 connection->disconnect();
             } else {
                 connection->tcp.setupUdp();
@@ -909,7 +909,7 @@ template <
         }>();
     }>(::network::Message<UserMessageType>{
         ::network::Message<UserMessageType>::SystemType::authentification,
-        m_connection->informations.getName(),
+        m_connection->getName(),
         "password"s
     });
 }
@@ -951,7 +951,7 @@ template <
             connection->tcp.m_bufferIn.getTypeAsSystemType() !=
             ::network::Message<UserMessageType>::SystemType::udpInformations
         ) {
-            ::std::cerr << "[ERROR:TCP:" << connection->informations.getId() << "] Failed to setup Udp, "
+            ::std::cerr << "[ERROR:TCP:" << connection->getId() << "] Failed to setup Udp, "
                 << "unexpected message received: " << connection->tcp.m_bufferIn.getTypeAsInt() << ".\n";
             connection->disconnect();
         } else {

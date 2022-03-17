@@ -40,7 +40,7 @@ public:
         const ::std::string& name
     )
     {
-        this->setInformation<::network::Informations::Index::name>(name);
+        this->setInformation<::network::SharableInformations::Index::name>(name);
     }
 
     void displayConnectedClients()

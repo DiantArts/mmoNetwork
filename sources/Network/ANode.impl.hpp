@@ -126,7 +126,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[ANode:" << connection->informations.getId() << "] onDisconnect.\n";
+    ::std::cout << "[ANode:" << connection->getId() << "] onDisconnect.\n";
 }
 
 // after receiving
@@ -146,7 +146,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 ) -> bool
 {
-    ::std::cout << "[ANode:" << connection->informations.getId() << "] onIdentification.\n";
+    ::std::cout << "[ANode:" << connection->getId() << "] onIdentification.\n";
     return true;
 }
 
@@ -165,7 +165,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cerr << "[ANode:" << connection->informations.getId() << "] Identification denied.\n";
+    ::std::cerr << "[ANode:" << connection->getId() << "] Identification denied.\n";
 }
 
 template <
@@ -174,5 +174,5 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cerr << "[ANode:" << connection->informations.getId() << "] Authentification denied.\n";
+    ::std::cerr << "[ANode:" << connection->getId() << "] Authentification denied.\n";
 }

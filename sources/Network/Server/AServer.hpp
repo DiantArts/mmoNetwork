@@ -194,17 +194,17 @@ public:
     ) -> ::std::shared_ptr<::network::Connection<UserMessageType>>;
 
     [[ nodiscard ]] auto getSharableInformations()
-        -> ::std::map<::detail::Id, ::network::Informations::Sharable>;
+        -> ::std::map<::detail::Id, ::network::SharableInformations>;
 
     template <
-        ::network::Informations::Index indexValue
+        ::network::SharableInformations::Index indexValue
     > void setInformation(
         ::detail::Id id,
         auto&&... args
     );
 
     template <
-        ::network::Informations::Index indexValue
+        ::network::SharableInformations::Index indexValue
     > void setInformation(
         ::std::shared_ptr<::network::Connection<UserMessageType>> connection,
         auto&&... args
@@ -223,7 +223,7 @@ private:
     // TODO rooms
     // ::std::vector<::network::server::Room> m_rooms;
 
-    ::detail::Id m_idCounter{ 1 };
+    ::detail::Id m_idCounter{ 0 };
 
 };
 

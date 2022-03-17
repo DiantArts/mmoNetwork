@@ -210,7 +210,7 @@ template <
 )
 {
     for (auto& client : m_connections) {
-        if (((client.informations.getId()() != ignoredClientIds) && ...)) {
+        if (((client.getId()() != ignoredClientIds) && ...)) {
             client->tcp.send(message);
         }
     }
@@ -337,7 +337,7 @@ template <
 )
 {
     for (auto& client : m_connections) {
-        if (((client.informations.getId()() != ignoredClientIds) && ...)) {
+        if (((client.getId()() != ignoredClientIds) && ...)) {
             client->udp.send(message);
         }
     }
@@ -363,16 +363,16 @@ template <
     ) {
         switch (message.getTypeAsSystemType()) {
         case ::network::Message<UserMessageType>::SystemType::sharableInformations: {
-            auto informationsIndex{ message.template pull<::network::Informations::Index>() };
+            auto informationsIndex{ message.template pull<::network::SharableInformations::Index>() };
             switch (informationsIndex) {
-            case ::network::Informations::Index::name:
-                this->setInformation<::network::Informations::Index::name>(
+            case ::network::SharableInformations::Index::name:
+                this->setInformation<::network::SharableInformations::Index::name>(
                     connection,
                     message.template pull<::std::string>()
                 );
                 break;
             default:
-                ::std::cerr << "[ERROR:Server:TCP:" << connection->informations.getId() << "]: "
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getId() << "]: "
                     << "Unwnown informations index.";
                 connection->disconnect();
                 break;
@@ -408,7 +408,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> disconnectedConnection
 )
 {
-    ::std::cout << '[' << disconnectedConnection->informations.getId() << "] Disconnected.\n";
+    ::std::cout << '[' << disconnectedConnection->getId() << "] Disconnected.\n";
     ::std::erase_if(
         m_connections,
         [disconnectedConnection](const auto& connection){ return connection == disconnectedConnection; }
@@ -423,16 +423,16 @@ template <
 {
     // TODO: onAuthentification give reson why it failed
     // TODO: onIdentification and onAuthentification max number fail attempts
-    ::std::cout << "[Server:TCP:" << connection->informations.getId() << "] onAuthentification: \""
-        << connection->informations.getName() << "\".\n";
-    if (connection->informations.getName().size() < 3) {
-        ::std::cerr << "[ERROR:Server:TCP:" << connection->informations.getName()
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onAuthentification: \""
+        << connection->getName() << "\".\n";
+    if (connection->getName().size() < 3) {
+        ::std::cerr << "[ERROR:Server:TCP:" << connection->getName()
             << ":onAuthentification] User name too short\n";
         return false;
     }
     for (const auto& validatedConnection : m_connections) {
-        if (validatedConnection->informations.getName() == connection->informations.getName()) {
-            ::std::cerr << "[ERROR:Server:TCP:" << connection->informations.getId()
+        if (validatedConnection->getName() == connection->getName()) {
+            ::std::cerr << "[ERROR:Server:TCP:" << connection->getId()
                 << ":onAuthentification] User name already taken\n";
             return false;
         }
@@ -446,7 +446,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[Server:TCP:" << connection->informations.getId() << "] onConnectionValidated.\n";
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onConnectionValidated.\n";
 
     connection->tcp.startReceivingMessage();
     connection->udp.startReceivingMessage();
@@ -460,8 +460,8 @@ template <
     this->tcpSendToAllClients(
         ::network::Message<UserMessageType>{
             ::network::Message<UserMessageType>::SystemType::newConnection,
-            connection->informations.getSharableOnes(),
-            connection->informations.getId()
+            connection->getSharableInformations(),
+            connection->getId()
         },
         connection
     );
@@ -475,7 +475,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[Server:TCP:" << connection->informations.getId() << "] onAuthentificationDenial.\n";
+    ::std::cout << "[Server:TCP:" << connection->getId() << "] onAuthentificationDenial.\n";
 }
 
 
@@ -490,21 +490,18 @@ template <
 {
     return *::std::ranges::find_if(
         m_connections,
-        [id](const auto& connection){ return connection->informations.getId()() == id; }
+        [id](const auto& connection){ return connection->getId()() == id; }
     );
 }
 
 template <
     ::detail::constraint::isEnum UserMessageType
 > auto ::network::server::AServer<UserMessageType>::getSharableInformations()
-    -> ::std::map<::detail::Id, ::network::Informations::Sharable>
+    -> ::std::map<::detail::Id, ::network::SharableInformations>
 {
-    ::std::map<::detail::Id, ::network::Informations::Sharable> map;
+    ::std::map<::detail::Id, ::network::SharableInformations> map;
     for (const auto& connection : m_connections) {
-        map.emplace(::std::make_pair(
-            connection->informations.getId(),
-            connection->informations.getSharableOnes()
-        ));
+        map.emplace(::std::make_pair(connection->getId(), connection->getSharableInformations()));
     }
     return map;
 }
@@ -512,40 +509,33 @@ template <
 template <
     ::detail::constraint::isEnum UserMessageType
 > template <
-    ::network::Informations::Index indexValue
+    ::network::SharableInformations::Index indexValue
 > void ::network::server::AServer<UserMessageType>::setInformation(
     ::detail::Id id,
     auto&&... args
 )
 {
-    auto connection{ this->getConnection(id) };
-    connection->informations.template set<indexValue>(::std::forward<decltype(args)>(args)...);
-    this->tcpSendToAllClients(
-        ::network::Message<UserMessageType>{
-            ::network::Message<UserMessageType>::SystemType::sharableInformations,
-            ::std::forward<decltype(args)>(args)...,
-            id,
-            indexValue
-        },
-        id
+    this->setInformation<indexValue>(
+        this->getConnection(id),
+        ::std::forward<decltype(args)>(args)...
     );
 }
 
 template <
     ::detail::constraint::isEnum UserMessageType
 > template <
-    ::network::Informations::Index indexValue
+    ::network::SharableInformations::Index indexValue
 > void ::network::server::AServer<UserMessageType>::setInformation(
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection,
     auto&&... args
 )
 {
-    connection->informations.template set<indexValue>(::std::forward<decltype(args)>(args)...);
+    connection->template setSharableInformation<indexValue>(::std::forward<decltype(args)>(args)...);
     this->tcpSendToAllClients(
         ::network::Message<UserMessageType>{
             ::network::Message<UserMessageType>::SystemType::sharableInformations,
             ::std::forward<decltype(args)>(args)...,
-            connection->informations.getId(),
+            connection->getId(),
             indexValue
         },
         connection

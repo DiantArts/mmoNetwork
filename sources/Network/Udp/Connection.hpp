@@ -24,8 +24,32 @@ template <
 
 public:
 
-    // ------------------------------------------------------------------ *structors
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // *structors
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////////
+    /// \brief Construct a new udp connection.
+    ///
+    /// This contructor creates basic udp connection.
+    ///
+    /// \warning The class is imcomlete with just the contructor called.
+    ///          In order to work, the user must call assignConnection().
+    ///
+    /// Once the class is fully initialized, the user must call target()
+    /// either call:
+    /// \arg \c startConnectingToClient()
+    /// \arg \c startConnectingToServer()
+    ///
+    /// depending on what they plan to connect to.
+    /// The call must match the socket sent to the constructor.
+    ///
+    /// \param socket The udp socket from asio, generated beforehand.
+    ///
+    ////////////////////////////////////////////////////////////
     Connection(
         ::asio::io_context& asioContext
     );

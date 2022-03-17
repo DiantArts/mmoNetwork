@@ -127,14 +127,14 @@ public:
     // ------------------------------------------------------------------ others
 
     template <
-        ::network::Informations::Index indexValue
+        ::network::SharableInformations::Index indexValue
     > void setInformation(
         ::detail::Id id,
         auto&&... args
     );
 
     template <
-        ::network::Informations::Index indexValue
+        ::network::SharableInformations::Index indexValue
     > void setInformation(
         auto&&... args
     );
@@ -145,7 +145,7 @@ protected:
 
     ::std::shared_ptr<::network::Connection<UserMessageType>> m_connectionToServer;
 
-    ::std::map<::detail::Id, ::network::Informations::Sharable> m_connectedClientsInformations;
+    ::std::map<::detail::Id, ::network::SharableInformations> m_connectedClientsInformations;
 
 };
 

@@ -204,13 +204,13 @@ template <
     if (message.getTransmissionProtocol() == ::network::Message<UserMessageType>::Protocol::tcp) {
         switch (message.getTypeAsSystemType()) {
         case ::network::Message<UserMessageType>::SystemType::sharableInformations: {
-            switch (message.template pull<::network::Informations::Index>()) {
-            case ::network::Informations::Index::name: {
+            switch (message.template pull<::network::SharableInformations::Index>()) {
+            case ::network::SharableInformations::Index::name: {
                 auto id{ message.template pull<::detail::Id>() };
                 m_connectedClientsInformations.at(id).name = message.template pull<::std::string>();
                 break;
             } default:
-                ::std::cerr << "[ERROR:Server:TCP:" << connection->informations.getName() << "]: "
+                ::std::cerr << "[ERROR:Server:TCP:" << connection->getName() << "]: "
                     << "Unwnown informations index.";
                 connection->disconnect();
                 break;
@@ -218,11 +218,11 @@ template <
             return true;
         } case ::network::Message<UserMessageType>::SystemType::allSharableInformations: {
             message.pull(m_connectedClientsInformations);
-            m_connectedClientsInformations.erase(m_connectionToServer->informations.getId());
+            m_connectedClientsInformations.erase(m_connectionToServer->getId());
             return true;
         } case ::network::Message<UserMessageType>::SystemType::newConnection: {
             auto id{ message.template pull<::detail::Id>() };
-            auto sharable{ message.template pull<::network::Informations::Sharable>() };
+            auto sharable{ message.template pull<::network::SharableInformations>() };
             m_connectedClientsInformations.emplace(::std::make_pair(::std::move(id), ::std::move(sharable)));
             return true;
         } case ::network::Message<UserMessageType>::SystemType::ping:
@@ -261,8 +261,8 @@ template <
 ) -> bool
 
 {
-    ::std::cout << "[Client:TCP:" << connection->informations.getId() << "] onAuthentification.\n";
-    connection->informations.setName("user"s + ::std::to_string(connection->informations.getId()));
+    ::std::cout << "[Client:TCP:" << connection->getId() << "] onAuthentification.\n";
+    connection->setName("user"s + ::std::to_string(connection->getId()));
     return true;
 }
 
@@ -272,7 +272,7 @@ template <
     ::std::shared_ptr<::network::Connection<UserMessageType>> connection
 )
 {
-    ::std::cout << "[Client:TCP:" << connection->informations.getId() << "] onConnectionValidated.\n";
+    ::std::cout << "[Client:TCP:" << connection->getId() << "] onConnectionValidated.\n";
     connection->tcp.startReceivingMessage();
     connection->udp.startReceivingMessage();
 }
@@ -281,18 +281,20 @@ template <
 
 // ------------------------------------------------------------------ others
 
+// TODO: setInformation
+
 template <
     ::detail::constraint::isEnum UserMessageType
 > template <
-    ::network::Informations::Index indexValue
+    ::network::SharableInformations::Index indexValue
 > void ::network::client::AClient<UserMessageType>::setInformation(
     auto&&... args
 )
 {
-    m_connectionToServer->informations.template set<indexValue>(::std::forward<decltype(args)>(args)...);
-    this->tcpSendToServer(
-        ::network::Message<UserMessageType>::SystemType::sharableInformations,
-        ::std::forward<decltype(args)>(args)...,
-        indexValue
-    );
+    // m_connectionToServer->informations.template set<indexValue>(::std::forward<decltype(args)>(args)...);
+    // this->tcpSendToServer(
+        // ::network::Message<UserMessageType>::SystemType::SharableInformations,
+        // ::std::forward<decltype(args)>(args)...,
+        // indexValue
+    // );
 }

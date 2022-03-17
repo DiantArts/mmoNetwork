@@ -37,12 +37,12 @@ private:
     {
         switch (message.getType()) {
         case ::MessageType::messageAll: {
-            ::std::cout << "[" << connection->informations.getName() << "] Message All.\n";
+            ::std::cout << "[" << connection->getName() << "] Message All.\n";
             this->tcpSendToAllClients(
                 ::network::Message{
                     ::MessageType::message,
                     message.pull<::std::string>(),
-                    connection->informations.getName()
+                    connection->getName()
                 },
                 connection
             );

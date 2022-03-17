@@ -65,7 +65,7 @@ template <
         m_isSendAllowed = false;
         m_socket.cancel();
         m_socket.close();
-        ::std::cout << "[Connection:UDP:" << m_connection->informations.getId() << "] Connection closed.\n";
+        ::std::cout << "[Connection:UDP:" << m_connection->getId() << "] Connection closed.\n";
     }
     if (m_connection) {
         m_connection.reset();
@@ -265,7 +265,7 @@ template <
             message.getSendingHeaderSize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.getId()](
+            [this, bytesAlreadySent, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -319,7 +319,7 @@ template <
             message.getBodySize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.getId()](
+            [this, bytesAlreadySent, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 ::network::Message<UserMessageType> message,
@@ -381,7 +381,7 @@ template <
             m_messagesOut.front().getSendingHeaderSize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.getId()](
+            [this, bytesAlreadySent, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -433,7 +433,7 @@ template <
             m_messagesOut.front().getBodySize() - bytesAlreadySent
         ),
         ::std::bind(
-            [this, bytesAlreadySent, id = m_connection->informations.getId()](
+            [this, bytesAlreadySent, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length [[ maybe_unused ]],
                 auto&&... args
@@ -496,7 +496,7 @@ template <
             m_bufferIn.getSendingHeaderSize() - bytesAlreadyRead
         ),
         ::std::bind(
-            [this, bytesAlreadyRead, id = m_connection->informations.getId()](
+            [this, bytesAlreadyRead, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args
@@ -548,7 +548,7 @@ template <
             m_bufferIn.getBodySize() - bytesAlreadyRead
         ),
         ::std::bind(
-            [this, bytesAlreadyRead, id = m_connection->informations.getId()](
+            [this, bytesAlreadyRead, id = m_connection->getId()](
                 const ::std::error_code& errorCode,
                 const ::std::size_t length,
                 auto&&... args

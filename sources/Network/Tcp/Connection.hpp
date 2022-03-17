@@ -20,6 +20,42 @@ namespace network::tcp {
 ////////////////////////////////////////////////////////////
 /// \brief A TCP Connection using boost asio.
 ///
+/// \include Connection.hpp <Network/Tcp/Connection.hpp>
+///
+/// ::network::tcp::Connection is one component of the ::network::Connection
+/// class. It cannot be used outside of this class.
+/// Its purpuse is to simplifie communications between two TCP endpoints.
+/// It shares a lot of similarities with the class ::network::udp::Connection
+/// They both use ::network::Message to communicate.
+///
+/// To use this class, the owner must call assignConnection() aswell as
+/// one of the following methods:
+///     \arg \c startConnectingToClient()
+///     \arg \c startConnectingToServer()
+///
+/// depending on what they plan to connect to.
+/// The call must match the socket sent to the constructor.
+///
+/// The owner of this class must have the following members:
+///     \arg \c ::network::ANode<UserMessageType>& m_owner;
+///     \arg \c ::security::Cipher m_cipher;
+///     \arg \c ::network::Informations informations;
+///     \arg \c ::network::udp::Connection<UserMessageType> udp;
+///     \arg \c ::network::tcp::Connection<UserMessageType> tcp;
+///
+/// The owner of the class must also possess a disconnect() method.
+///
+/// The m_owner, m_cipher and informations must be initialised before the udp
+/// member, which mush be initalised before the tcp member.
+///
+/// Both ::network::udp::Connection and ::network::tcp::Connection must be friend
+/// of the owner class.
+///
+/// The owner class must be initialised as ::std::shared_ptr and inherit from
+/// ::std::enable_shared_from_this
+///
+/// \see ::network::Message, ::network::Connection, ::network::udp::Connection
+///
 ////////////////////////////////////////////////////////////
 template <
     ::detail::constraint::isEnum UserMessageType
@@ -44,7 +80,9 @@ public:
     ///
     /// Once the class is fully initialized, the user can decide to
     /// either call:
-    /// \arg \c startConnectingToClient() or startConnectingToServer()
+    /// \arg \c startConnectingToClient()
+    /// \arg \c startConnectingToServer()
+    ///
     /// depending on what they plan to connect to.
     /// The call must match the socket sent to the constructor.
     ///
@@ -351,15 +389,15 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Sends a message.
     ///
-    /// Asynchronously sends a messages on the asio thread.
-    /// once sent, it calls the callback given as template parameter
-    /// In case of errors, Both Udp and Tcp connection are closed.
-    ///
-    /// \tparam successCallback Function, lambda or class called on
-    ///                         success.
-    ///
-    /// \param message Message to send.
-    /// \param args    Argument to pass to the successCallback
+    // Asynchronously sends a messages on the asio thread.
+    // once sent, it calls the callback given as template parameter
+    // In case of errors, Both Udp and Tcp connection are closed.
+    //
+    // \tparam successCallback Function, lambda or class called on
+    //                         success.
+    //
+    // \param message Message to send.
+    // \param args    Argument to pass to the successCallback
     ///
     ////////////////////////////////////////////////////////////
     template <
@@ -372,14 +410,14 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Sends a message in the queue.
     ///
-    /// Same as sendMessage(), but does not copy the message, but
-    /// sends the message in front of the queue.
-    /// Once sent, the message is deleted
-    ///
-    /// \tparam successCallback Function, lambda or class called on
-    ///                         success.
-    ///
-    /// \param args    Argument to pass to the successCallback
+    // Same as sendMessage(), but does not copy the message, but
+    // sends the message in front of the queue.
+    // Once sent, the message is deleted
+    //
+    // \tparam successCallback Function, lambda or class called on
+    //                         success.
+    //
+    // \param args    Argument to pass to the successCallback
     ///
     ////////////////////////////////////////////////////////////
     template <
@@ -400,16 +438,16 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Receives a message.
     ///
-    /// Asynchronously wait on the asio thread for a messages to arrive.
-    /// once a message arrived, it's tranfered to the incomming buffer
-    /// and the successCallback is called.
-    /// In case of errors, Both Udp and Tcp connection are closed.
-    ///
-    /// \tparam successCallback Function, lambda or class called on
-    ///                         success.
-    ///
-    /// \param message Message to send.
-    /// \param args    Argument to pass to the successCallback
+    // Asynchronously wait on the asio thread for a messages to arrive.
+    // once a message arrived, it's tranfered to the incomming buffer
+    // and the successCallback is called.
+    // In case of errors, Both Udp and Tcp connection are closed.
+    //
+    // \tparam successCallback Function, lambda or class called on
+    //                         success.
+    //
+    // \param message Message to send.
+    // \param args    Argument to pass to the successCallback
     ///
     ////////////////////////////////////////////////////////////
     template <
@@ -421,12 +459,12 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Push incomming mesages to the incomming queue messages.
     ///
-    /// Convert the ::network::Message to ::network::OwnedMessage and
-    /// and assign the OwnedMessage's remote as ::network::Connection::getPtr().
-    /// Once the ::network::OwnedMessage is created, it is just pushed to the
-    /// queue of incomming messages that can later be pulled by the Owner.
-    ///
-    /// \see ::network::ANode
+    // Convert the ::network::Message to ::network::OwnedMessage and
+    // and assign the OwnedMessage's remote as ::network::Connection::getPtr().
+    // Once the ::network::OwnedMessage is created, it is just pushed to the
+    // queue of incomming messages that can later be pulled by the Owner.
+    //
+    // \see ::network::ANode
     ///
     ////////////////////////////////////////////////////////////
     void transferBufferToInQueue();
@@ -448,15 +486,15 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Starts the identification process.
     ///
-    /// Both client and server share their public key.
-    ///
-    /// Once done, calls either serverHandshake() or clientHandshake()
-    /// depending on the Owner of the connection.
-    /// if ENABLE_ENCRYPTION is turned to false, all the encryption
-    /// process is skipped and either serverAcceptIdentification() or
-    /// clientWaitIdentificationAcceptation() is direcly used.
-    ///
-    /// \see ::network::ANode
+    // Both client and server share their public key.
+    //
+    // Once done, calls either serverHandshake() or clientHandshake()
+    // depending on the Owner of the connection.
+    // if ENABLE_ENCRYPTION is turned to false, all the encryption
+    // process is skipped and either serverAcceptIdentification() or
+    // clientWaitIdentificationAcceptation() is direcly used.
+    //
+    // \see ::network::ANode
     ///
     ////////////////////////////////////////////////////////////
     void identification();
@@ -467,7 +505,7 @@ private:
 
     ////////////////////////////////////////////////////////////
     /// \brief Perform a handshake with the client.
-    //
+    ///
     // Uses ::security::Cipher::generateRandomData() to create a
     // random base data, encrypts it end send it to the client.
     // Once the data have been sent, it uses ::security::Cipher::scramble
@@ -480,7 +518,7 @@ private:
     // sendIdentificationDenial(), and then ::network::Connection::disconnect().
     //
     // \see ::security::Cipher
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void serverHandshake();
 
@@ -488,7 +526,7 @@ private:
 
     ////////////////////////////////////////////////////////////
     /// \brief Perform a handshake with the server.
-    //
+    ///
     // Receives the encrypted data sent by the server, decrypts it,
     // Scrambles it and encrypts it back to send it to the server. If
     // ::network::ANode::onIdentification() call returns true,
@@ -496,7 +534,7 @@ private:
     // ::network::Connection::disconnect() is called
     //
     // \see ::security::Cipher
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void clientHandshake();
 
@@ -515,21 +553,21 @@ private:
     ////////////////////////////////////////////////////////////
     /// \brief Accept the identification of the client and start the
     /// authentification
-    //
+    ///
     // Sends the ID of the connection to the client, accepting its
     // identification.
     // Calls serverAuthentification()
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void serverAcceptIdentification();
 
     ////////////////////////////////////////////////////////////
     /// \brief If accepted, receives an ID and start the authentification
-    //
+    ///
     // If the identification is successful, the client is assigned an ID, then
     // calls clientAuthentification(). Otherwise, it calls
     // ::network::Connection::disconnect().
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void clientWaitIdentificationAcceptation();
 
@@ -548,7 +586,7 @@ private:
 
     ////////////////////////////////////////////////////////////
     /// \brief Performs the authentification process with the client
-    //
+    ///
     // asynchronously wait to receive the authentification request
     // of the client supposed to contained a known (TODO) and valid
     // username and password.
@@ -560,7 +598,7 @@ private:
     // Else, it sends an authentificationAccepted before allowing the server
     // to send messages, calling ::network::ANode::onConnectionValidated()
     // and notify().
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void serverAuthentification();
 
@@ -568,7 +606,7 @@ private:
 
     ////////////////////////////////////////////////////////////
     /// \brief Performs the authentification process with the client
-    //
+    ///
     // Calls ::network::ANode::onAuthentification before asynchronously
     // send the authentification request with a user name and a password.
     // If the answer received is an authentification denied, it calls
@@ -577,7 +615,7 @@ private:
     // If the message type is not authentification accepted, it disconnects
     // the client, else, is allows the client to send messages, calls
     // ::network::ANode::onConnectionValidated() and notify().
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void clientAuthentification();
 
@@ -600,7 +638,7 @@ private:
 
     ////////////////////////////////////////////////////////////
     /// \brief Sends and receives UDP informations with the target
-    //
+    ///
     ////////////////////////////////////////////////////////////
     void setupUdp();
 
@@ -626,58 +664,3 @@ private:
 } // namespace network::tcp
 
 #include <Network/Tcp/Connection.impl.hpp>
-
-////////////////////////////////////////////////////////////
-/// \class ::network::tcp::Connection\<UserName\> Connection.hpp "Network/Tcp/Connection.hpp"
-///
-/// ::network::tcp::Connection is one component of the ::network::Connection
-/// class. It cannot be used outside of this class.
-/// Its purpuse is to simplifie communications between two TCP endpoints.
-/// It shares a lot of similarities with the class ::network::udp::Connection
-/// They both use ::network::Message to communicate.
-///
-/// Here is a typical client implementation of the class inside
-/// ::network::Connection:
-/// \code
-/// ::network::tcp::Connection<UserMessageType> tcp{
-///     ::asio::ip::tcp::socket(owner.getAsioContext()) // Owner being an AClient
-/// };
-/// ptr->tcp.assignConnection(ptr->getPtr());
-/// ptr->tcp.startConnectingToServer(host, port);
-/// \endcode
-///
-/// Here is a typical server implementation of the class inside
-/// ::network::Connection:
-/// \code
-/// ::network::tcp::Connection<UserMessageType> tcp{
-///     ::std::move(socket) // socket created by ASever
-/// };
-/// ptr->tcp.assignConnection(ptr->getPtr());
-/// ptr->tcp.startConnectingToClient();
-/// \endcode
-///
-/// \note The code example is not functionnal because this class must be used
-/// under the following circonstances:
-///
-/// The owner of this class must have the following members:
-///     \arg \c ::network::ANode<UserMessageType>& m_owner;
-///     \arg \c ::security::Cipher m_cipher;
-///     \arg \c ::network::Informations informations;
-///     \arg \c ::network::udp::Connection<UserMessageType> udp;
-///     \arg \c ::network::tcp::Connection<UserMessageType> tcp;
-///
-/// The owner of the class must also possess the following methods
-///     \arg \c void disconnect();
-///
-/// The m_owner, m_cipher and informations must be initialised before the udp
-/// member, which mush be initalised before the tcp member.
-///
-/// Both ::network::udp::Connection and ::network::tcp::Connection must be friend
-/// of the owner class.
-///
-/// The owner class must be initialised as a ::std::shared_ptr and inherit from
-/// ::std::enable_shared_from_this
-///
-/// \see ::network::Message, ::network::Connection, ::network::udp::Connection
-///
-////////////////////////////////////////////////////////////

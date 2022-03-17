@@ -49,6 +49,42 @@ public:
 
 
 
+    // ------------------------------------------------------------------ informations
+
+    auto getSharableInformations() const
+        -> const ::network::SharableInformations&;
+
+    void setSharableInformations(
+        ::network::SharableInformations newInformations
+    );
+
+
+
+    template <
+        ::network::SharableInformations::Index informationIndex
+    > void setSharableInformation(
+        auto&&... args
+    );
+
+
+
+    auto getId() const
+        -> ::detail::Id;
+
+    void setId(
+        ::detail::Id newId
+    );
+
+
+
+    auto getName() const
+        -> const ::std::string&;
+
+    void setName(
+        ::std::string newName
+    );
+
+
 
 private:
 
@@ -58,12 +94,15 @@ private:
     ::security::Cipher m_cipher;
 #endif // ENABLE_ENCRYPTION
 
+    ::detail::Id m_id{ 0 };
+
+    ::network::SharableInformations m_sharableInformations;
+
 
 
 public:
 
-    ::network::Informations informations;
-
+    // Subclass composition
     ::network::udp::Connection<UserMessageType> udp;
     ::network::tcp::Connection<UserMessageType> tcp;
 
@@ -72,9 +111,6 @@ public:
 private:
 
     // ------------------------------------------------------------------ private constructors
-
-    friend class ::network::tcp::Connection<UserMessageType>;
-    friend class ::network::udp::Connection<UserMessageType>;
 
     // called by client
     Connection(
@@ -89,6 +125,9 @@ private:
         ::asio::ip::tcp::socket&& socket,
         ::detail::Id id
     );
+
+    friend class ::network::tcp::Connection<UserMessageType>;
+    friend class ::network::udp::Connection<UserMessageType>;
 
 };
 
