@@ -44,7 +44,7 @@ CPP_WFLAGS		:=	no-volatile no-address no-nonnull-compare no-unused-variable no-u
 CPPM_WFLAGS		:=
 
 ## flags
-COMMON_FLAGS	:=	-fmax-errors=10
+COMMON_FLAGS	:=	-fmax-errors=10 -fPIC
 C_FLAGS			:=	
 CPP_FLAGS		:=	-std=c++20
 CPPM_FLAGS		:=	-std=c++20
@@ -53,13 +53,13 @@ PCH_FLAGS		:=	-std=c++20
 ## -I
 COMMON_CPPFLAGS	:=	$(INCDIR) $(SRCDIR) $(EXTERNDIR) $(EXTERNDIR)/HdrOnly $(LIBDIR)
 C_CPPFLAGS		:=
-CXX_CPPFLAGS	:=
+CXX_CPPFLAGS	:=	/usr/include/qt6 /usr/include/qt6/QtGui /usr/include/qt6/QtCore /usr/include/qt6/QtCore /usr/include/qt6/QtWidgets
 
 ## -L
 LIBLOCATION		:=
 
 ## -l
-LIBBIN			:=	boost_system boost_thread pthread sodium
+LIBBIN			:=	boost_system boost_thread pthread sodium Qt6Core Qt6Gui Qt6Widgets
 
 
 # ============================================================================= Mode debug

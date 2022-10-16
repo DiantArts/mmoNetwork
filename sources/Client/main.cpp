@@ -4,9 +4,16 @@
 enum class Enum{ nothing };
 
 
+#include <QApplication>
+#include <QLabel>
+#include <QLineEdit>
 
-int main(int argc, char **argv)
+#define FILE fine.hpp
+#include <FILE>
+
+int main(int argc, char *argv[])
 {
+    return 0;
     ::ClientExample client;
     ::std::thread inMessagesThread;
 
